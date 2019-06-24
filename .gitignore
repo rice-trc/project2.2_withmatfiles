@@ -1,0 +1,6 @@
+*.m~
+*.~
+# ignore some simulink stuff
+*.slxc
+slprj/
+*.r2016b
