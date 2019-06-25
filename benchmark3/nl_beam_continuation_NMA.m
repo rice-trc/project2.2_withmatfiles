@@ -6,10 +6,16 @@ clear; clc;
 close all;
 srcpath = '../src/nlvib';
 addpath(genpath(srcpath));
+
+% addpath('00_SRC');
+% addpath('00_SRC/MechanicalSystems');
+
 srcpath = '../src/matlab';
 addpath(genpath(srcpath));
 
-savedata = false;
+
+
+savedata = true;
 savename = '';
 
 %% Define system

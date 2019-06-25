@@ -1,0 +1,10 @@
+diff 00_SRC/solve_and_continue.m ../src/nlvib/SRC/solve_and_continue.m
+...
+< disp('NLvib Version 1.0, Copyright (C) 2017 Malte Krack, Johann Gross');
+---
+> disp('NLvib Version 1.1, Copyright (C) 2019 Malte Krack, Johann Gross');
+396c394
+<     if iEx<1
+---
+>     if iEx<1 || sqrt(Rext'*Rext)>Sopt.eps
+

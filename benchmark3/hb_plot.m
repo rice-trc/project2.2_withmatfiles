@@ -81,7 +81,7 @@ for j = 1:frf.nex
 end
 legend(['nm - backbone', slabel], 'Location', 'northeast')
 
-xlim([200 400])
+xlim([260 420])
 xlabel('$f_{\mathrm{ex}}$ in Hz');
 ylabel('$\hat{w}_{L/2}$ in mm');
 title(['thickness = ' num2str(thickness*1000) 'mm']);

@@ -1,4 +1,4 @@
-function frf=load_frf(frf, Ntd)
+function frf=process_frf(frf, Ntd)
 
 % dimensionless time - exclude last point, ie. tau = [0, 2pi[
 tau = linspace(0,2*pi,Ntd+1); tau = tau(1:end-1);
