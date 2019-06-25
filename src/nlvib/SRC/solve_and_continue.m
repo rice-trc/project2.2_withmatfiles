@@ -177,6 +177,7 @@ Sol(1:Sopt.stepmax) = struct;
 Solinfo.NIT = zeros(Sopt.stepmax,1);
 Solinfo.IEx = zeros(Sopt.stepmax,1);
 Solinfo.FC = zeros(Sopt.stepmax,1);
+Solinfo.IERR = zeros(Sopt.stepmax,1);
 Solinfo.ctime = 0;
 Solinfo.FCtotal = 0;
 %% Initial guess, reference vector, tangent vector and additional row for
@@ -444,6 +445,7 @@ while istep<=Sopt.stepmax
             end
         end
     else
+        Solinfo.IERR(istep) = ierr;
         ierr = 0;
     end
     %% POSTPROCESS SOLUTION POINT
@@ -491,6 +493,7 @@ while istep<=Sopt.stepmax
         Solinfo.NIT(istep+1:end) = [];
         Solinfo.IEx(istep+1:end) = [];
         Solinfo.FC(istep+1:end) = [];
+        Solinfo.IERR(istep+1:end) = [];
         if any(term)
             disp(['Terminating continuation since at least one of the ' ...
                 'termination criteria is met.']);
