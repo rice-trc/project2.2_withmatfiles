@@ -33,7 +33,7 @@ dir = 'trans';
 kt = 1.3e6; % tangential stiffness in N/m
 muN = 1;    % friction limit force in N
 add_nonlinear_attachment(beam,nl_node,dir,'elasticdryfriction',...
-    'stiffness',kt,'friction_limit_force',muN);
+    'stiffness',kt,'friction_limit_force',muN, 'ishysteretic', 1);
 
 %% Modal analysis the linearized system
 
