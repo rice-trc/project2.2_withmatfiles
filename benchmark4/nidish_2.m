@@ -3,6 +3,9 @@ clear all
 
 addpath('./NLvib_v1.1/SRC/')
 addpath('./NLvib_v1.1/SRC/MechanicalSystems/')
+set(0,'defaultAxesTickLabelInterpreter', 'default');
+set(0,'defaultTextInterpreter','latex'); 
+set(0, 'DefaultLegendInterpreter', 'latex'); 
 
 %% System definition
 len = 0.70;

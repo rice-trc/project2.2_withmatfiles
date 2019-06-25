@@ -66,7 +66,6 @@ end
 periodtimes = 1./frequencies;
 timeframes(:,1) = timeframes(:,2) - periods * periodtimes';
 
-
 % -------------------------------------------------------------------------
 %%%%%%%%%%% Computation of the FFT of the signals
 % -------------------------------------------------------------------------
@@ -74,7 +73,7 @@ timeframes(:,1) = timeframes(:,2) - periods * periodtimes';
 x_cell_rs = cell(length(DOFs),number_timeframes);
 x_cell = cell(length(DOFs),number_timeframes);
 X_cell = cell(length(DOFs),number_timeframes);
-      
+   
 
 %loop over DOFs
 for mm = 1:length(DOFs)

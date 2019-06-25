@@ -109,8 +109,6 @@ Q_HB = Psi_HB.*repmat(a_HB,size(Psi_HB,1),1);
 % fundamental harmonic motion
 Y_HB_1 = Q_HB(n+(1:n),:)-1i*Q_HB(2*n+(1:n),:);
 
-
-
 %% Setup simulated experiments
 
 exc_node = 8; % node for external excitation
@@ -149,7 +147,6 @@ T_exc(2*(exc_node-1-1)+1) = 1;
 
 T_disp = [eye(n,n) zeros(n,n)];
 
-
 %% shaker model
 
 % source: Master thesis Florian Morlock, INM, University of Stuttgart
@@ -158,6 +155,7 @@ T_disp = [eye(n,n) zeros(n,n)];
 M_T = 0.0243; % Table Masse [kg]
 M_C = 0.0190; % Coil Masse [kg]
 K_C = 8.4222*10^7; % spring constant Coil-Table [N/m]
+
 K_S = 20707; % spring constant Table-Ground [N/m]
 C_C = 57.1692; % damping constant Coil-Table [Ns/m]
 C_S = 28.3258; % damping constant Table-Ground [Ns/m]
@@ -180,7 +178,6 @@ E_stinger = 210000 ;%in N/mm^2
 A_stinger = pi*2^2; % in mm
 l_stinger = 0.0200; %in m
 k_stinger = (E_stinger*A_stinger)/l_stinger;
-
 
 %% simulation of experiment
 
@@ -223,7 +220,6 @@ res_damp = nonlinear_damping( res_LMA, res_bb);
 names = [fieldnames(res_bb); fieldnames(res_damp)];
 res_NMA = cell2struct([struct2cell(res_bb); struct2cell(res_damp)], names, 1);
 
-
 %% Compare modal characteristics for experiment and Harmonic Balance methods
 
 % Modal frequency vs. amplitude
@@ -233,7 +229,6 @@ hold on
 semilogx(abs(res_NMA.Psi_tilde_i(opt.NMA.eval_DOF,:)),res_NMA.om_i/(res_LMA.freq(1)*2*pi),'k.','MarkerSize',10)
 xlabel('amplitude in m'); ylabel('\omega/\omega_0')
 legend('NMA with NLvib','simulated experiment')
-
 
 % Modal damping ratio vs. amplitude
 figure; 
