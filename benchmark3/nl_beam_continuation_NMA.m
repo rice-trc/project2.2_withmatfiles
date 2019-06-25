@@ -6,8 +6,11 @@ clear; clc;
 close all;
 srcpath = '../src/nlvib';
 addpath(genpath(srcpath));
+srcpath = '../src/matlab';
+addpath(genpath(srcpath));
 
-savedata = true;
+savedata = false;
+savename = '';
 
 %% Define system
 
@@ -20,16 +23,16 @@ thickness = .001;
 R=3;
 
 [L,rho,E,~,PHI,~,gam] = beams_for_everyone(setup,Nmod*2-1,thickness);
-PHI_L_2 = PHI(L/2);
-PHI_L_2 = PHI_L_2(1:2:end);
+PHI_L2 = PHI(L/2);
+PHI_L2 = PHI_L2(1:2:end);
 gam = gam(1:2:end);
 
 % load nonlinear coefficients (can be found e.g. via IC-method)
-fname  = ['beam_msh_80_4_1_3t_steel_' num2str(thickness*1000) 'mm_R' num2str(R) 'm.mat'];
-[p, E] = nlcoeff(fname, Nmod);
+modelname  = ['beam_msh_80_4_1_3t_steel_' num2str(thickness*1000) 'mm_R' num2str(R) 'm.mat'];
+[p, E] = nlcoeff(modelname, Nmod);
 
 % also om is needed for linear model, so we load the model again
-load(fname);
+load(modelname);
 om = model.omega;
 
 % Properties of the underlying linear system
@@ -51,7 +54,6 @@ n = oscillator.n;
 analysis = 'FRF';
 H = 20;              % harmonic order
 N=2*3*H+1;
-Ntd = 1e3;
 
 % Analysis parameters
 Om_e = 0;      % start frequency
@@ -80,8 +82,13 @@ for iex=1:length(exc_lev)
         Om_s,Om_e,ds,Sopt);
 
 end
+
+
+% create struct from varible names. Short hacky way.
+frfdata = ws2struct('X','ds','H','exc_lev','oscillator','n'...
+    ,'Dmod','Nmod','om','gam','thickness','setup','modelname','R','PHI_L2');
 if savedata
-save('frf.mat','X','ds','H','Ntd','exc_lev','oscillator','n')
+    save([savename,'frf.mat'],'-struct','frfdata')
 end
 
 %% NMA
@@ -115,6 +122,12 @@ Sopt    = struct('Dscale',[1e-6*ones(size(x0,1)-2,1);1;1e-1;1],...
     @(X) HB_residual(X,oscillator,H,N,analysis,inorm),...
     log10a_s,log10a_e,ds, Sopt);
 
+
+nmadata = ws2struct('Solinfo','Sol','X','ds','H','n','imod','oscillator',...
+    'Dmod','Nmod','om','gam','thickness','setup','modelname','R','PHI_L2');
 if savedata
-save('nma.mat','Solinfo','Sol','X','ds','H','n','imod')
+    save([savename,'nma.mat'],'-struct','nmadata')
 end
+
+%% plot data
+hb_plot;
