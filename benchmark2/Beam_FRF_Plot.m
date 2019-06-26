@@ -51,5 +51,9 @@ figure (3)
 Y_HB_1 = Q_HB(n+(1:n),:)-1i*Q_HB(2*n+(1:n),:);
 % semilogx(abs(Y_HB_1(3,:)),del_HB*1e2,'b-','LineWidth',2);
 semilogx(1000*abs(a_w_L_2_NMA),del_HB*1e2,'b-','LineWidth',2);
-xlabel('amplitude in m'); ylabel('modal damping ratio in %')
+xlabel('amplitude in mm'); ylabel('modal damping ratio in %')
 title('Damping Ratio')
+
+figure (4)
+semilogx(1000*abs(a_w_L_2_NMA),om_HB/2/pi,'linewidth',2)
+xlabel('amplitude in mm'); ylabel('Frequency (Hz)')
