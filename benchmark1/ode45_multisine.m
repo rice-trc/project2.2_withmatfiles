@@ -6,11 +6,12 @@
 
 close all
 clearvars
+addpath('../src/matlab/')
 
 %% Define system
 % Fundamental parameters
 Dmod = [.38 .12 .09 .08 .08]*.01;
-Nmod = 5;
+Nmod = 1;
 setup = 'New_Design_Steel';
 thickness = .001;
 [L,rho,E,om,PHI,~,gam] = beams_for_everyone(setup,Nmod,thickness);
@@ -18,7 +19,7 @@ PHI_L2 = PHI(L/2);
 
 % Properties of the underlying linear system
 M = eye(Nmod);
-D = diag(2*Dmod(:).*om(:));
+D = diag(2*Dmod(1:Nmod).*om(:));
 K = diag(om.^2);
 
 % load nonlinear coefficients (can be found e.g. analytically)
@@ -34,41 +35,38 @@ n = Nmod;
 
 %% multisine, using time domain formulation
 
-R = 4;           % Realizations. (one for validation and one for testing)
-P = 8;           % Periods, we need to ensure steady state
+R  = 1;           % Realizations. (one for validation and one for testing)
+P  = 8;           % Periods, we need to ensure steady state
 f1 = 5;          % low freq
 f2 = 400;        % high freq
 fs = 1500;       % 5*f2. Must be fs>2*f2. Nyquist freq, you know:)
-f0 = 1;          % freq resolution. 
-N = f2/f0;       % freq points
-har = ones(N,1); % full multisine, eg. excite all lines.
-A = 15;           % amplitude
-lines = 2:N;     % excited lines
+N  = 1e3;         % freq points
+f0 = (f2-f1)/N;
+A  = 15;          % amplitude
 
-upsamp = 1;         % upsampling factor to ensure integration accuracy.
-fsint = fs*upsamp;  % integration sampling frequency.
-Pfilter = 1;        % extra period to avoid edge effects during low-pass filtering
-P = P + Pfilter;
+Nt = 2^12;      % Time per cycle
+fs = Nt*f0;     % Samping frequency
 
-q0 = zeros(n,1);
-u0 = zeros(n,1);
-t1 = 0;
-t2 = P/f0;
-Nt = fsint/f0;             % time points per period
-t = t1:1/fsint:t2-1/fsint; % time vector. ode45 interpolates output
-freq = (0:Nt-1)/Nt*fsint;  % frequency content
-nt = length(t);
+if fs/2 <= f2
+    error('Increase sampling rate!');
+end    
 
-u = zeros(Nt,P,R);
-y = zeros(Nt,P,R,n);
+q0   = zeros(n,1);
+u0   = zeros(n,1);
+t1   = 0;
+t2   = P/f0;
+t    = linspace(t1, t2, Nt*P+1);  t(end) = [];   % time vector. ode45 interpolates output
+freq = (0:Nt/2)*f0;   % frequency content
+nt   = Nt*P;
+
+u    = zeros(Nt,P,R);
+y    = zeros(Nt,P,R,n);
 ydot = zeros(Nt,P,R,n);
 tic
+MS = cell(R, 1);
 for r=1:R
-    % predictable pseudo-random numbers
-    rng(r);
-    % multisine in time domain (sum of sines)
-    phase = 2*pi*rand(N,1);
-    fex = @(t) har'*A*cos(2*pi*(1:N)'*f0*t + phase) / sqrt(sum(har));
+    % multisine force signal
+    [fex, MS{r}] = multisine(f1, f2, N, [], [], r);
 
     par = struct('M',M,'C',D,'K',K,'p',p,'E',E,'fex',fex, 'amp', Fex1);
     [tout,Y] = ode45(@(t,y) sys(t,y, par), t,[q0;u0]);
@@ -79,8 +77,8 @@ for r=1:R
 end
 disp(['ode45 with multisine in time domain required ' num2str(toc) ' s.']);
 
-save('ode45_multisine.mat','u','y','ydot','f1','f2','fs','f0','freq',...
-    't','A','PHI_L2','lines')
+save('ode45_multisine.mat','u','y','ydot','f1','f2','fs','freq',...
+    't','A','PHI_L2', 'MS')
 
 %% show time series
 r = 1;
@@ -129,20 +127,4 @@ xlabel('frequency (Hz)')
 ylabel('phase (rad)')
 title('FFT of one period of the multisine realizations')
 % export_fig('fig/multisine_freq.pdf')
-
-
-%% Low-pass filtering and downsampling.
-if upsamp > 1
-    drate = factor(upsamp);        % prime factor decomposition.
-    for k=1:length(drate),
-        Y = decimate(Y,drate(k),'fir');
-    end %k
-    u = downsample(u,upsamp);
-    
-    % Removal of the last simulated period to eliminate the edge effects
-    % due to the low-pass filter.
-    Y = Y(1:(P-1)*Nt);
-    u = u(1:(P-1)*Nt);
-    P = P-1;
-end
 
