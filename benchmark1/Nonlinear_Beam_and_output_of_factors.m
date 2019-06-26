@@ -2,7 +2,7 @@ clear; close all; clc;
 %% Simulation of the self-adaptive system (beam with slider)
 
 % Parameters to be varied
-Nmod = 5;
+Nmod = 1;
 
 %% Define beam subsystem
 
