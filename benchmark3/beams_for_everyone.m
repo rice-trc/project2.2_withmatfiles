@@ -2,7 +2,7 @@
 function [L,rho,E,ommod,PHI,dPHI,gam] = beams_for_everyone(setup,Nmod,thickness_input)
 
 % Essential beam properties
-load([setup '_Setup.mat'])
+load(['data/',setup '_Setup.mat'])
 thickness=thickness_input;
 
 % Auxiliary parameters

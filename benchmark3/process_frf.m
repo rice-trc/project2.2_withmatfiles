@@ -4,17 +4,21 @@ function frf=process_frf(frf, Ntd)
 tau = linspace(0,2*pi,Ntd+1); tau = tau(1:end-1);
 
 PHI = frf.PHI_L2;
-n = frf.n;
+n = frf.ndof;
 % different ext. levels
 nex = length(frf.exc_lev);
 
 a_rms = cell(1,nex);
 a_diff = cell(1,nex);
 Om = cell(1,nex);
+phase = cell(1,nex);
 for j = 1:nex
     % Interpret solver output
     Om{j} = frf.X{j}(end,:);
     Q_HB = frf.X{j}(1:end-1,:);
+    
+    % Calculate Response Phase
+    phase{j} = zeros(n+1,length(Om{j}));
     
     % two ways to define amplitude (at x = L/2)
     % 1) difference between min/max amplitude in time domain or
@@ -30,17 +34,22 @@ for j = 1:nex
         % include all harmonics
         Qc = [Q_HB(k,:);Q_HB(n+k:2*n:end,:)-1i*Q_HB(2*n+k:2*n:end,:)];
         % get displacement at center caused by each mode in time domain
-        w_mode = PHI(k)*real(exp(1i*tau(:)*(0:frf.H))*Qc);
+        w_mode = PHI(k)*real(exp(1i*tau(:)*(0:frf.Nh))*Qc);
         % sum up to actual displacement at center in time domain
         w_L2 = w_L2 + w_mode;
 
-%         q = real(exp(1i*tau(:)*(0:frf.H))*Qc);
+%         q = real(exp(1i*tau(:)*(0:frf.Nh))*Qc);
 %         a_q(k,:) = (max((q))-min((q)))/2;
 
         % 2) RMS. include all harmonics
         Q_rms = sqrt(sum(Q_HB(k:n:end,:).^2))/sqrt(2);
         a_rms_loc = a_rms_loc + PHI(k)*Q_rms;
+        
+        phase{j}(k, :)  = rad2deg(angle(Qc(2,:)));
     end
+    Qc_L2 = kron(eye(2*frf.Nh+1), PHI)*Q_HB;
+    phase{j}(n+1,:)  = atan2d(-Qc_L2(3,:), Qc_L2(2,:));
+
     % compute peak to peak amplitude
     a_diff{j} = (max((w_L2))-min((w_L2)))/2;     
     a_rms{j} = a_rms_loc;
@@ -54,5 +63,5 @@ frf.arms = a_rms;
 frf.nex= nex;
 frf.tau = tau;
 frf.Ntd = Ntd;
-
+frf.phase = phase;
 end
