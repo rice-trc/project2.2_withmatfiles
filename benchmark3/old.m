@@ -18,6 +18,9 @@ nma = process_nma(nmadata,Ntd);
 % https://www.mathworks.com/help/matlab/graphics_transition/why-are-plot-lines-different-colors.html
 set(groot,'defaultAxesColorOrder',[1 0 0;0 1 0;0 0 1;0 0.5 0;0.75 0 0.75],...
     'defaultAxesLineStyleOrder','--|:|-')
+%% remove default linestyle
+set(groot,'defaultAxesLineStyleOrder','remove')
+set(groot,'defaultAxesColorOrder','remove')
 
 % % Illustrate frequency response
 % figure; hold on; box on
@@ -135,3 +138,42 @@ for nh=1:H
     legend(aa(nh), sprintf('%d', nh))
 end
 legend(aa(1:nh))
+
+%% HB convergence
+
+cmap = distinguishable_colors(length(imod));
+
+figure;
+hold on
+for i=imod
+    hbc = load(sprintf('data/HConvDat_M%d.mat',i));
+    
+%     popt = {'Color',cmap(imod,:),'LineWidth', 2};
+    h(i) = plot(hbc.Hs(1:end-2), hbc.Errs(1:end-2,1)*100, '-', 'Color',cmap(i,:),'LineWidth', 2);
+    plot(hbc.Hs(1:end-2), hbc.Errs(1:end-2,2)*100, ':', 'Color',cmap(i,:),'LineWidth', 2)
+
+    plot(hbc.Hs(hbc.ihconv), hbc.Errs(hbc.ihconv,:)*100, 'o',...
+        'Color',cmap(i,:),'MarkerFaceColor', cmap(i,:))
+    hline(hbc.errmax*100,'k--');  % treshold
+    str{i} = sprintf('mode = %d', i);
+end
+
+% create lines for legend
+L(1) = plot(nan, nan, 'k-','LineWidth', 2);
+L(2) = plot(nan, nan, 'k:','LineWidth', 2);
+L(3) = plot(nan, nan, 'ko','MarkerFaceColor','k');
+L(4) = plot(nan, nan, 'k--');
+
+set(gca, 'YScale', 'log')
+xlabel('Number of Harmonics')
+ylabel('Relative Error (\%)')
+legend([h,L],{str{:},'Resonant frequency', 'Resonant amplitude',...
+    'Convergence',sprintf('Threshold: %.2f \\%%', hbc.errmax*100) } )
+
+%     ... 
+%     sprintf('Convergence: $N_h$=%d', hbc.Nhconv),...
+%     sprintf('Threshold: %.2f \\%%', hbc.errmax*100)} )
+
+hfig(end+1) = {{gcf, "convergence"}};
+
+

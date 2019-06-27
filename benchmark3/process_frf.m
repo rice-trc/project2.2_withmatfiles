@@ -8,6 +8,7 @@ n = frf.ndof;
 % different ext. levels
 nex = length(frf.exc_lev);
 
+pks = zeros(nex, 3);
 a_rms = cell(1,nex);
 a_diff = cell(1,nex);
 Om = cell(1,nex);
@@ -52,8 +53,22 @@ for j = 1:nex
 
     % compute peak to peak amplitude
     a_diff{j} = (max((w_L2))-min((w_L2)))/2;     
-    a_rms{j} = a_rms_loc;
+    a_rms{j} = abs(a_rms_loc);
+    
+    % detect if phase is positive or negative, ie [0,180] or [0,-180].
+    ph = 0; % for robustness
+    if all(sign( phase{j}(n+1,:) ) >=0)
+        ph = 90;
+    elseif  all(sign( phase{j}(n+1,:) ) <=0)
+        ph = -90;
+    else
+        sprintf('ambiguous phase, Not [180,0] or [0,-180] in process_frf\n')
+    end
+    pks(j,1:2) = interp1(phase{j}(n+1,:), [Om{j}(:), a_rms{j}(:)], ph, 'pchip');
+    pks(j,3) = ph;
 end
+
+
 
 frf.Om = Om;
 frf.Qsc = Q_HB;
@@ -64,4 +79,6 @@ frf.nex= nex;
 frf.tau = tau;
 frf.Ntd = Ntd;
 frf.phase = phase;
+frf.pks = pks;
+
 end

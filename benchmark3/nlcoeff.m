@@ -1,5 +1,10 @@
-function [p, E] = nlcoeff(fname, Nmod)
+function [p, E] = nlcoeff(fname,Nmod,benchmark)
 % load nonlinear coefficients (can be found e.g. analytically)
+
+% backwards compability
+if nargin < 3
+    benchmark = 3;
+end
 
 load(fname);
 
@@ -24,13 +29,19 @@ for jj = 1:Nmod
     end
 end
 
-p = [p_quad; p_cub];
+switch(benchmark)
+    case {1,2}
+        p = [p_cub];
+    case 3
+        p = [p_quad; p_cub];
+end
 
 % coefficients
 E=zeros(sum(cumsum(1:Nmod)),Nmod);
 
 for rr = 1:Nmod
     ctr = 1;
+    if benchmark == 3
         for jj = 1:Nmod
             for kk = jj:Nmod
                 % quadratic coeffs
@@ -38,7 +49,7 @@ for rr = 1:Nmod
                 ctr = ctr+1;
             end
         end
-%         ctr = 1;
+    end
     for jj = 1:Nmod
         for kk = jj:Nmod
             for ll = kk:Nmod
