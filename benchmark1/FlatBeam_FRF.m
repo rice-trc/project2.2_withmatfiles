@@ -9,7 +9,7 @@ set(0, 'DefaultLegendInterpreter', 'latex');
 %% Define system
 
 % Fundamental parameters
-Dmod = [.38]*.01;
+Dmod = .38*.01;
 Nmod = 1;
 setup = 'New_Design_Steel';
 thickness = .001;
@@ -157,8 +157,7 @@ Psi(Nmod+(1:Nmod)) = phi;
 x0 = [Psi;om;0];
 
 ds      = .1;
-Sopt    = struct('Dscale',[1e-6*ones(size(x0,1)-2,1);1;1e-1;1],...
-    'dynamicDscale',1,'stepmax',5e4);
+Sopt    = struct('dynamicDscale',1,'stepmax',5e4);
 [X_NM,Solinfo,Sol] = solve_and_continue(x0,...
     @(X) HB_residual(X,oscillator,H,N,analysis,inorm),...
     log10a_s,log10a_e,ds, Sopt);

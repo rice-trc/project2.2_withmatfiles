@@ -11,9 +11,13 @@ hold on
 semilogy(Harmonics,freq_err, 'LineWidth', 2)
 semilogy(Harmonics,amp_err, 'LineWidth', 2)
 semilogy(Harmonics,tolerence,'--k', 'LineWidth', 2)
+dot = interp1(Harmonics,amp_err,9);
+semilogy(9,dot,'ko', 'MarkerFaceColor', 'k')
+dot = interp1(Harmonics,freq_err,9);
+semilogy(9,dot,'ko', 'MarkerFaceColor', 'k')
 hold off
 
+errmax = 0.01*1e-2;
 xlabel('Number of Harmonics')
-ylabel('Relative Error (%)')
-legend('Resonance Frequency','Resonance Amplitude','Tolerence')
-savefig('HarmonicError.fig')
+ylabel('Relative Error (\%)')
+legend('Resonant frequency', 'Resonant amplitude', sprintf('Threshold: %.2f \\%%', errmax*100), sprintf('Convergence: $N_h$=%d',3))
