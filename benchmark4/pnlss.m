@@ -3,7 +3,7 @@ clear all
 close all
 addpath('../src/pnlss/')
 
-fdir = 'famp05';
+fdir = 'famp01';
 load(sprintf('./TRANSIENT/%s/CLCLEF_MULTISINE.mat',fdir), 'u', 'y', 'fdof', 't', 'f1', 'f2', 'df', 'freqs', 'fsamp');
 
 [Nt, P, R, n] = size(y);
