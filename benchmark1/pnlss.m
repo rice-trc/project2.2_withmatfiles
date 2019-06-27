@@ -246,7 +246,7 @@ disp(['rms(y-y_mod) = ' num2str(rms(y-y_mod))...
 fh{3} = figure;
 hold on
 plot(freq(1:end/2),db(plotfreq(1:end/2,:)),'.')
-plot(freq(1:end/2)/2,db(sqrt(P*squeeze(covY))), '.')
+plot(freq(1:end/2),db(sqrt(P*squeeze(covY))), '.')
 xlabel('Frequency (Hz)')
 ylabel('Output (errors) (dB)')
 legend('Output','Linear error','PNLSS error','noise')
