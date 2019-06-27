@@ -16,7 +16,7 @@ figpath = './fig/';
 
 %%
 addnoise = true;
-% addnoise = false;
+addnoise = false;
 savefig = true;
 
 load('data/ode45_multisine')
@@ -111,6 +111,7 @@ model = models{min_na};
 % Balanced realization
 [A,B,C] = dbalreal(A,B,C);
 
+
 %% Estimate PNLSS model
 
 % Average over periods (be careful that the data are truly steady state)
@@ -128,10 +129,11 @@ T1 = [NTrans 1+(0:Nt:(R-1)*Nt)];
 T2 = 0; % No non-periodic transient handling
 
 % Nonlinear terms
-nx = [2 3];
-ny = [2 3];
-whichtermsx = 'full';
-whichtermsy = 'full';
+nx = [3];
+ny = [];
+whichtermsx = 'statesonly';
+% whichtermsx = 'full';
+whichtermsy = 'empty';
 
 % Settings Levenberg-Marquardt optimization
 MaxCount = 100;
@@ -146,6 +148,9 @@ model = fCreateNLSSmodel(A,B,C,D,nx,ny,T1,T2);
 % Set which monomials will be optimized
 model.xactive = fSelectActive(whichtermsx,n,m,n,nx);
 model.yactive = fSelectActive(whichtermsy,n,m,p,ny);
+
+% nonlinear powers
+% tmp=kron([1;1],model.xpowers); tmp(model.xactive,:)
 
 % Output of the initial linear model on the estimation data
 modellinest = model;
