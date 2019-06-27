@@ -33,6 +33,13 @@ Fex1 = gam;
 nz = size(p,1);
 n = Nmod;
 
+% State-space (continuous time) matrices
+model.A = [0 1;-K/M -D/M];
+model.B = [0; gam/M];
+model.C = [PHI_L2 0];
+model.D = 0;
+model.nlcof = struct('power', p, 'coef', E);
+
 %% multisine, using time domain formulation
 
 R  = 4;           % Realizations. (one for validation and one for testing)
@@ -78,7 +85,7 @@ end
 disp(['ode45 with multisine in time domain required ' num2str(toc) ' s.']);
 
 save('data/ode45_multisine.mat','u','y','ydot','f1','f2','fs','freq',...
-    't','A','PHI_L2', 'MS')
+    't','A','PHI_L2', 'MS', 'model')
 
 %% show time series
 r = 1;
