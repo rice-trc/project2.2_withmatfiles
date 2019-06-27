@@ -14,10 +14,10 @@
 %              nonparametric model
 %           5) estimate the parameters in the full PNLSS model
 %
-%	Copyright (c) Vrije Universiteit Brussel – dept. ELEC
+%	Copyright (c) Vrije Universiteit Brussel ï¿½ dept. ELEC
 %   All rights reserved.
 %   Software can be used freely for non-commercial applications only.
-%   Disclaimer: This software is provided “as is” without any warranty.
+%   Disclaimer: This software is provided ï¿½as isï¿½ without any warranty.
 
 %% Clear workspace, command window, and figures
 
@@ -138,7 +138,7 @@ T2 = 0; % No non-periodic transient handling
 nx = [2 3]; % Nonlinear degrees in state update equation
 ny = [2 3]; % Nonlinear degrees in output equation
 whichtermsx = 'full'; % Consider all monomials in the state update equation
-whichtermsy = 'full'; % Consider all monomials in the output equation
+whichtermsy = 'empty'; % Consider all monomials in the output equation
 
 % Settings Levenberg-Marquardt optimization
 MaxCount = 100; % Number of Levenberg-Marquardt optimizations
@@ -165,10 +165,10 @@ ytest_lin = fFilterNLSS(modellintest,utest); % Output of the initial linear mode
 err_lin = ytest - ytest_lin; % Output error initial linear model on test data
 
 % Set weighting
-for kk = size(covY,3):-1:1
-    W(:,:,kk) = fSqrtInverse(covY(:,:,kk)); % Frequency weighting
-end;
-%     W = []; % Uncomment for uniform (= no) weighting
+% for kk = size(covY,3):-1:1
+%     W(:,:,kk) = fSqrtInverse(covY(:,:,kk)); % Frequency weighting
+% end;
+W = []; % Uncomment for uniform (= no) weighting
 
 % Levenberg-Marquardt optimization
 [model, y_mod, models] = fLMnlssWeighted(u,y,model,MaxCount,W,lambda); % The actual optimisation of the PNLSS model

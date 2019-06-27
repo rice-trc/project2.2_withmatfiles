@@ -10,7 +10,7 @@ close all
 clearvars
 % clc
 
-srcpath = '~/src/matlab/PNLSS_v1_0';
+srcpath = '../src/pnlss';
 addpath(genpath(srcpath));
 figpath = './fig/';
 
@@ -19,7 +19,7 @@ addnoise = true;
 addnoise = false;
 savefig = true;
 
-load('ode45_multisine')
+load('data/ode45_multisine')
 [Nt,P,R,n] = size(y);
 
 % use middle deflection
@@ -31,7 +31,7 @@ y = reshape(y,[Nt,P,R]);
 rng(10);
 if addnoise
     noise = 1e-3*std(y(:,end,end))*randn(size(y)); % Output noise signal
-    % Do some filtering
+    % Do some filteringO
     noise(1:end-1,:,:) = noise(1:end-1,:,:) + noise(2:end,:,:);
     y = y + noise;
 end
@@ -47,7 +47,7 @@ yval = y(:,end,R-1); yval = yval(:);
 
 % All other realizations for estimation. But remember to remove transient!
 R = R-2;
-Ptr = 6;
+Ptr = 3;
 P = P-Ptr;
 u = u(:,Ptr:end,1:R);
 y = y(:,Ptr:end,1:R);
@@ -55,6 +55,9 @@ y = y(:,Ptr:end,1:R);
 % standard deviation of the generated signal
 uStd = mean(mean(std(u)));
 
+% lines = cell2mat(cellfun(@(c) c.lines, MS, 'UniformOutput', false));
+lines = MS{1}.lines;
+lines(lines==1) = [];
 %% Estimate nonparametric linear model (BLA)
 
 % m: number of inputs, p: number of outputs
@@ -70,7 +73,7 @@ Y = fft(y); Y = Y(lines,:,:,:); % Output spectrum at excited lines
 % total distortion level includes nonlinear and noise distortion
 % G: FRF; covGML: noise + NL; covGn: noise (all only on excited lines)
 [G,covGML,covGn] = fCovarFrf(U,Y); 
-
+% figure; subplot(2,1,1); semilogy(freq(lines),abs(squeeze(G(:)))); subplot(2,1,2); plot(freq(lines),rad2deg(angle(G(:))))
 %% Estimate linear state-space model (frequency domain subspace)
 
 % Choose model order
@@ -119,7 +122,7 @@ u = u(:); % Concatenate the data: N*P*R x m
 y = y(:); % N*P*R x p
 
 % Transient settings
-NTrans = Nt; % Add one period before the start of each realization
+NTrans = 2*Nt; % Add one period before the start of each realization
 % Number of transient samples and starting indices of each realization
 T1 = [NTrans 1+(0:Nt:(R-1)*Nt)]; 
 T2 = 0; % No non-periodic transient handling

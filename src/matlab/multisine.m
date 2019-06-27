@@ -1,19 +1,19 @@
-function [fex ,ms] = multisine(f1, f2, N, Nt, ms_type, seed)
+function [fex ,ms] = multisine(f1, f2, N, A, Nt, ms_type, seed)
 % Return the excited lines along with harmonics
 % Used for time-domain multisine excitation, ie.
 %
 % phase = 2*pi*rand(N,1);
 % fex = @(t) ms.har'*A*cos(2*pi*(1:N)'*f0*t + phase) / sqrt(sum(ms.har));
 % 
-% if nargin == 6
-%     rng(seed)
-% end
+if nargin == 7
+    rng(seed)
+end
 % 
 % non_lines = [];
 % non_odd = [];
 % non_even = [];
 % 
-% if nargin < 3
+% if nargin < 4
 %     ms_type = 'full';
 % end
 %     
@@ -52,12 +52,14 @@ f0 = (f2-f1)/N;
 linesMin = ceil(f1/f0)+1;
 linesMax = floor(f2/f0)+1;
 lines = linesMin:linesMax;
+% remove DC line
+lines(lines==1) = [];
 
 har = zeros(linesMax,1);
 har(lines) = 1;
 
 phase = 2*pi*rand(linesMax,1);
-fex = @(t) har'*cos(2*pi*(1:linesMax)'*f0*t(:)' + phase) / sqrt(sum(har)/2);
+fex = @(t) A*har'*cos(2*pi*(1:linesMax)'*f0*t(:)' + phase) / sqrt(sum(har)/2);
 
 ms.phase = phase;
 ms.lines = lines;

@@ -35,16 +35,16 @@ n = Nmod;
 
 %% multisine, using time domain formulation
 
-R  = 1;           % Realizations. (one for validation and one for testing)
+R  = 4;           % Realizations. (one for validation and one for testing)
 P  = 8;           % Periods, we need to ensure steady state
-f1 = 5;          % low freq
+f1 = 0;          % low freq
 f2 = 400;        % high freq
-fs = 1500;       % 5*f2. Must be fs>2*f2. Nyquist freq, you know:)
+fs = 1200;       % 5*f2. Must be fs>2*f2. Nyquist freq, you know:)
 N  = 1e3;         % freq points
 f0 = (f2-f1)/N;
 A  = 15;          % amplitude
 
-Nt = 2^12;      % Time per cycle
+Nt = 2^13;      % Time per cycle
 fs = Nt*f0;     % Samping frequency
 
 if fs/2 <= f2
@@ -66,7 +66,7 @@ tic
 MS = cell(R, 1);
 for r=1:R
     % multisine force signal
-    [fex, MS{r}] = multisine(f1, f2, N, [], [], r);
+    [fex, MS{r}] = multisine(f1, f2, N, A, [], [], r);
 
     par = struct('M',M,'C',D,'K',K,'p',p,'E',E,'fex',fex, 'amp', Fex1);
     [tout,Y] = ode45(@(t,y) sys(t,y, par), t,[q0;u0]);
@@ -77,7 +77,7 @@ for r=1:R
 end
 disp(['ode45 with multisine in time domain required ' num2str(toc) ' s.']);
 
-save('ode45_multisine.mat','u','y','ydot','f1','f2','fs','freq',...
+save('data/ode45_multisine.mat','u','y','ydot','f1','f2','fs','freq',...
     't','A','PHI_L2', 'MS')
 
 %% show time series
