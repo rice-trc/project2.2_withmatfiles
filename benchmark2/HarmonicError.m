@@ -89,8 +89,8 @@ N=2*3*H+1;
 Ntd = 1e3;
 
 % Analysis parameters
-Om_s = om(3)*.6;      % start frequency
-Om_e = 1.5*om(3);     % end frequency
+Om_s = om(5)*.7;      % start frequency
+Om_e = 1.5*om(5);     % end frequency
 
 % Excitation levels
 exc_lev = 100;
@@ -138,7 +138,7 @@ tolerence = ones(length(Harmonics),1)*0.1;
 amp_err = abs(peak_amp - peak_amp(end))/peak_amp(end)*100; % resonance amplitude error
 freq_err = abs(res - res(end))/res(end)*100; % resonance freq error
 
-save HarmonicErrorII.mat
+save HarmonicError_V.mat
 
 figure(1); set(gca, 'YScale', 'log')
 hold on

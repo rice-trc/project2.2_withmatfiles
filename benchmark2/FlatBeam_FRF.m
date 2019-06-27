@@ -82,7 +82,7 @@ oscillator = System_with_PolynomialStiffnessNonlinearity(M,D,K,p,E,Fex1);
 n = oscillator.n;
 
 %% harmonic order
-H = 3;              
+H = 1;              
 
 %% Compute frequency response using harmonic balance
 analysis = 'FRF';
@@ -92,8 +92,8 @@ Ntd = 1e3;
 % Analysis parameters
 % Om_s = om(1)*.2;      % start frequency
 % Om_e = 3*om(1);     % end frequency
-Om_s = om(3)*.6;      % start frequency
-Om_e = 1.5*om(3);     % end frequency
+Om_s = om(5)*.7;      % start frequency
+Om_e = 1.5*om(5);     % end frequency
 
 % Excitation levels
 exc_lev = [10,40,60,80,100];
@@ -146,9 +146,9 @@ PHI_lin = PHI_lin(:,ind);
 
 analysis = 'NMA';
 
-imod = 3;           % mode to be analyzed
-log10a_s = -7;    % start vibration level (log10 of modal mass)
-log10a_e = -3.2;       % end vibration level (log10 of modal mass)
+imod = 5;           % mode to be analyzed
+log10a_s = -9;    % start vibration level (log10 of modal mass)
+log10a_e = -4;       % end vibration level (log10 of modal mass)
 inorm = 1;          % coordinate for phase normalization
 
 % Initial guess vector y0 = [Psi;om;del], where del is the modal
@@ -185,6 +185,6 @@ end
 
 a_w_L_2_NMA = sqrt([1 0.5*ones(1,2*H)]*w_L_2_NMA_sum.^2); % compute amplitude
 
-save FlatBeam_FRF_III.mat
+save FlatBeam_FRF_V.mat
 
 
