@@ -30,5 +30,5 @@ linmodel.E(2, find(Xpowers(:,1)==3 & Xpowers(:,2)==0)) = linmodel.model.nlcof.co
 Tfmat = inv(Tp);
 pnlssmodel.Tmat = NLCOEF_TFMMATS(Tp, Xpowers);
 
-Ep = inv(Tfmat)*pnlssmodel.model.E*pnlssmodel.Tmat*linmodel.fs*2.6e14
+Ep = inv(Tfmat)*pnlssmodel.model.E*pnlssmodel.Tmat*linmodel.fs
 El = linmodel.E

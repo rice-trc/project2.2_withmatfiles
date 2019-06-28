@@ -49,7 +49,7 @@ f2 = 400;        % high freq
 fs = 1200;       % 5*f2. Must be fs>2*f2. Nyquist freq, you know:)
 N  = 1e3;         % freq points
 f0 = (f2-f1)/N;
-A  = 50;          % amplitude
+A  = 21.12;          % amplitude
 
 Nt = 2^13;      % Time per cycle
 fs = Nt*f0;     % Samping frequency
