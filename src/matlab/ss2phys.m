@@ -18,9 +18,12 @@ function [A,B,C,T] = ss2phys(A,B,C)
 % similarity transform
 % mldivide (or \):  Solve systems of linear equations Ax = B for x
 % Maybe this could be done without all the transposes with using mrdivide?
-T = [C; C*A];
-C = mldivide(T.', C.').';        % (C = C*T^-1)
-A = mldivide(T.', (T * A).').';  % (A = T*A*T^-1)
-B = T * B;
+
+    T = [C; C*A];
+%     C = mldivide(T.', C.').';        % (C = C*T^-1)
+    C = C*inv(T);
+%     A = mldivide(T.', (T * A).').';  % (A = T*A*T^-1)
+    A = T*A*inv(T);
+    B = T * B;
 
 end

@@ -26,6 +26,12 @@ K = diag(om.^2);
 Fex1 = gam;
 n = Nmod;
 
+% State-space (continuous time) matrices
+model.A = [0 1;-K/M -D/M];
+model.B = [0; PHI_L2*Fex1/M];
+model.C = [1 0];
+model.D = 0;
+
 %% multisine, using time domain formulation
 
 R  = 4;           % Realizations. (one for validation and one for testing)
@@ -35,7 +41,7 @@ f2 = 400;        % high freq
 fs = 1200;       % 5*f2. Must be fs>2*f2. Nyquist freq, you know:)
 N  = 1e3;         % freq points
 f0 = (f2-f1)/N;
-A  = 15;          % amplitude
+A  = 150;          % amplitude
 
 Nt = 2^13;      % Time per cycle
 fs = Nt*f0;     % Samping frequency
@@ -70,8 +76,8 @@ for r=1:R
 end
 disp(['ode45 with multisine in time domain required ' num2str(toc) ' s.']);
 
-save('data/ode45_multisine.mat','u','y','ydot','f1','f2','fs','freq',...
-    't','A','PHI_L2', 'MS')
+save(sprintf('data/ode45_multisine_f%d.mat',A),'u','y','ydot','f1','f2','fs','freq',...
+    't','A','PHI_L2', 'MS', 'model')
 
 %% show time series
 r = 1;

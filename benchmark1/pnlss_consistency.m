@@ -2,29 +2,33 @@ clc
 clear all
 
 %%
+% famp = 150;
+% linmodel   = load(sprintf('./data/ode45_multisine_f%d.mat',famp), 'model', 'fs', 'A');
+% pnlssmodel = load(sprintf('./data/pnlssout_f%d.mat',famp), 'model');
+
 linmodel   = load('./data/ode45_multisine.mat', 'model', 'fs');
 pnlssmodel = load('./data/pnlssout_try0.mat', 'model');
 
+lm = ss(linmodel.model.A, linmodel.model.B, linmodel.model.C, linmodel.model.D)
+pm = d2c(ss(pnlssmodel.model.A, pnlssmodel.model.B, pnlssmodel.model.C, pnlssmodel.model.D, 1/linmodel.fs));
+
+[Ap, Bp, Cp, Tp] = ss2phys(pm.A, pm.B, pm.C);
+% Bp = Bp/linmodel.A;
+% Cp = Cp*linmodel.A;
+
+pmphy = ss(Ap, Bp, Cp, pm.D)
+Bp(1)
+Bp(2)
+
+%%
 Xpowers = pnlssmodel.model.xpowers(:,1:2);
 
-[linmodel.Phi, linmodel.D] = eig(linmodel.model.A);
 linmodel.E = zeros(2, size(Xpowers,1));
-linmodel.E(2, find(Xpowers(:,1)==3 & Xpowers(:,2)==0)) = 1; % linmodel.model.nlcof.coef;
-linmodel.Tmat = NLCOEF_TFMMATS(linmodel.Phi, Xpowers);
+linmodel.E(2, find(Xpowers(:,1)==3 & Xpowers(:,2)==0)) = linmodel.model.nlcof.coef;
+% linmodel.Tmat = NLCOEF_TFMMATS(linmodel.Phi, Xpowers);
 
-linmodel.phimodel = struct('A', linmodel.D, 'B', inv(linmodel.Phi)*linmodel.model.B, ...
-    'C', linmodel.model.C*linmodel.Phi, 'D', linmodel.model.D, ...
-    'E', inv(linmodel.Phi)*linmodel.E*linmodel.Tmat);
+Tfmat = inv(Tp);
+pnlssmodel.Tmat = NLCOEF_TFMMATS(Tp, Xpowers);
 
-
-[pnlssmodel.Phi, pnlssmodel.D] = eig(logm(pnlssmodel.model.A)*fs);
-pnlssmodel.Tmat = NLCOEF_TFMMATS(pnlssmodel.Phi, Xpowers);
-Btmp = inv(pnlssmodel.model.A-eye(2))*logm(pnlssmodel.model.A)*fs*pnlssmodel.model.B;
-
-pnlssmodel.phimodel = struct('A', pnlssmodel.D, ...
-    'B', inv(pnlssmodel.Phi)*Btmp, ...
-    'C', pnlssmodel.model.C*pnlssmodel.Phi, 'D', pnlssmodel.model.D, ...
-    'E', inv(pnlssmodel.Phi)*pnlssmodel.model.E*pnlssmodel.Tmat);
-
-El = linmodel.phimodel.E;
-Ep = pnlssmodel.phimodel.E;
+Ep = inv(Tfmat)*pnlssmodel.model.E*pnlssmodel.Tmat*linmodel.fs*2.6e14
+El = linmodel.E

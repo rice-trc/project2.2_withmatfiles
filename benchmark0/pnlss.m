@@ -15,11 +15,12 @@ addpath(genpath(srcpath));
 figpath = './fig/';
 
 %%
-addnoise = true;
+% addnoise = true;
 addnoise = false;
 savefig = true;
 
-load('data/ode45_multisine')
+famp = 150;
+load(sprintf('data/ode45_multisine_f%d',famp))
 [Nt,P,R,n] = size(y);
 
 % use middle deflection
@@ -73,7 +74,9 @@ Y = fft(y); Y = Y(lines,:,:,:); % Output spectrum at excited lines
 % total distortion level includes nonlinear and noise distortion
 % G: FRF; covGML: noise + NL; covGn: noise (all only on excited lines)
 [G,covGML,covGn] = fCovarFrf(U,Y); 
-% figure; subplot(2,1,1); semilogy(freq(lines),abs(squeeze(G(:)))); subplot(2,1,2); plot(freq(lines),rad2deg(angle(G(:))))
+% figure; 
+% subplot(2,1,1); semilogy(freq(lines),abs([G(:) covGML(:) covGn(:)])); 
+% subplot(2,1,2); plot(freq(lines),rad2deg(angle([G(:) covGML(:) covGn(:)])))
 %% Estimate linear state-space model (frequency domain subspace)
 
 % Choose model order
@@ -208,6 +211,8 @@ fprintf('############# RMS errors #############\n')
 fprintf('e_est_lin:\t %0.3e\t e_est_nl:\t %0.3e\n', err(1,:))
 fprintf('e_val_lin:\t %0.3e\t e_val_nl:\t %0.3e\n', err(2,:))
 fprintf('e_test_lin:\t %0.3e\t e_test_nl:\t %0.3e\n',err(3,:))
+
+save(sprintf('./data/pnlssout_f%d.mat',famp), 'modellinest', 'model')
 
 %% Results
 

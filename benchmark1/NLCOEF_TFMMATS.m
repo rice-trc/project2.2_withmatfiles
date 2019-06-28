@@ -13,9 +13,8 @@ function [Tmat] = NLCOEF_TFMMATS(Phi, Xpowers)
     n  = size(Phi, 1);
     nz = size(Xpowers, 1);
     
-    pcofs = ones(n, max(max(Xpowers))+1);
-
 %     % Without symbolics
+%     pcofs = ones(n, max(max(Xpowers))+1);
 %     Tmat = zeros(nz, nz);
 %     for i=1:nz
 %         for j=1:n
