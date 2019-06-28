@@ -19,7 +19,7 @@ figpath = './fig/';
 addnoise = false;
 savefig = true;
 
-load('odeA50.mat')
+load('ode45A21.mat')
 freq = (0:Nt-1)*f0;   % frequency content
 [Nt,P,R,n] = size(y);
 
