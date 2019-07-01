@@ -225,6 +225,8 @@ om4 = oms.^4;
 Phi_HB = Xbb(Nd+(1:Nd),:)-1j*Xbb(2*Nd+(1:Nd),:);
 Fsc = (abs(Phi_HB'*Fex1)./Bkb(:,1)).^2;
 mAmps = Bkb(:,5);
+php = rad2deg(angle(Phi_HB'*Fex1));
+phf = Phi_HB'*Fex1;
 
 figure(1)
 clf()
@@ -241,8 +243,12 @@ for k=1:length(Fas)
     ris1 = find(imag(om1)==0);
     ris2 = find(imag(om2)==0);
     
-	phi1 = atan2d(-2*zts(ris1).*oms(ris1).*om1(ris1), oms(ris1).^2-om1(ris1).^2);
-    phi2 = atan2d(-2*zts(ris2).*oms(ris2).*om2(ris2), oms(ris2).^2-om2(ris2).^2);
+% 	phi1 = php(ris1)+atan2d(-2*zts(ris1).*oms(ris1).*om1(ris1), oms(ris1).^2-om1(ris1).^2);
+%     phi2 = php(ris2)+atan2d(-2*zts(ris2).*oms(ris2).*om2(ris2), oms(ris2).^2-om2(ris2).^2);
+
+% Have to be offsetted by -180 degrees for mode 1
+    phi1 = rad2deg(angle(phf(ris1)./((oms(ris1).^2-om1(ris1).^2)+1j*(2*zts(ris1).*oms(ris1).*om1(ris1)))));
+    phi2 = rad2deg(angle(phf(ris2)./((oms(ris2).^2-om2(ris2).^2)+1j*(2*zts(ris2).*oms(ris2).*om2(ris2)))));
     
     figure(1)
     semilogy(Sols{k}(:,1)/2/pi, Sols{k}(:,2), '-', 'LineWidth', 2, 'Color', colos(k,:)); hold on
