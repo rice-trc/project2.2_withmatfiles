@@ -138,11 +138,11 @@ RT22 = RT(end-(r*p)+1:end,end-(r*p)+1:end);
 
 % 1.h. CY^(-1/2)*RT22=USV'
     % Calculate CY^(-1/2)
-[uc,sc] = svd(CY,0);
+[uc,sc,~] = svd(CY,0);
 minsqrtCY = uc*diag(diag(sc).^(-1/2))*uc';
 sqrtCY = uc*sqrt(sc)*uc';
     % Take SVD of CY^(-1/2)*RT22
-[UU,SS] = svd(minsqrtCY*RT22); 
+[UU,SS,~] = svd(minsqrtCY*RT22);
 
 if n == 0 % Offer possibility to choose model order
     trap = db(diag(SS)) - min(db(diag(SS)));

@@ -41,7 +41,7 @@ if ~(ismatrix(A) && (size(A,1) == size(A,2)))
     error('A should be a square matrix')
 end
 
-[U,S] = svd(A,0);
+[U,S,~] = svd(A,0);
 B = U*diag(diag(S).^(-1/2))*U';
 
 %}
