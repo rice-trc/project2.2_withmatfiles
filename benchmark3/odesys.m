@@ -1,4 +1,4 @@
-function dxdt = sys(t,x, par)
+function dxdt = odesys(t,x, par)
 % system with NL.
 % fex should either be a function or interpolated table
 

@@ -52,11 +52,13 @@ f0 = (f2-f1)/N;
 linesMin = ceil(f1/f0)+1;
 linesMax = floor(f2/f0)+1;
 lines = linesMin:linesMax;
-% remove DC line
-lines(lines==1) = [];
 
 har = zeros(linesMax,1);
 har(lines) = 1;
+% convert lines to 1-index for using with fft-output.
+lines = lines + 1;
+% remove DC line
+lines(lines==1) = [];
 
 phase = 2*pi*rand(linesMax,1);
 fex = @(t) A*har'*cos(2*pi*(1:linesMax)'*f0*t(:)' + phase) / sqrt(sum(har)/2);

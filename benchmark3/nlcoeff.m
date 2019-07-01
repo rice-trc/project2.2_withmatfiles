@@ -6,7 +6,11 @@ if nargin < 3
     benchmark = 3;
 end
 
-load(fname);
+if benchmark < 3
+    model = load(fname);
+else
+    load(fname);
+end
 
 % polynomial terms
 p_quad = zeros(sum(1:Nmod),Nmod);
