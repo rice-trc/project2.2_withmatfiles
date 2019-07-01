@@ -1,7 +1,7 @@
 clear all
 clc
 
-benchmark = 1;
+benchmark = 3;
 Nt = 1024;
 
 setup = 'New_Design_Steel';
@@ -48,7 +48,7 @@ switch benchmark
         exc_lev = [10,30,50];
         log10a_ss = [1,1,1]*(-8);
         log10a_ee = [1,1,1]*(-3.2);
-        Nhs = ones(lsize(imods))*7;
+        Nhs = ones(size(imods))*7;
 end
 
 %% load analytical parameters
