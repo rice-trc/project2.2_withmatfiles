@@ -1,6 +1,7 @@
 clc
 clear all
 
+addpath('../src/matlab/')
 addpath('../src/nlvib/SRC/')
 addpath('../src/nlvib/SRC/MechanicalSystems/')
 
@@ -29,7 +30,7 @@ muN = 1;
 add_nonlinear_attachment(beam, Nnl, dir, 'elasticdryfriction', ...
     'stiffness', kt, 'friction_limit_force', muN, ...
     'ishysteretic', true);
-
+Nd = size(beam.M, 1);
 %% Linearized limit cases
 % Slipped
 [Vsl, Dsl] = eig(beam.K, beam.M);
@@ -62,10 +63,11 @@ switch imod
     case 1
         Fas = [0.01 0.05 0.1 0.2 0.3 0.6];
 
-        Ws = 500;
-        We = 200;
+        Ws = 200;
+        We = 500;
         ds = abs(We-Ws)/100;
         dsmax = abs(We-Ws)/50;
+        xls = [20 100];
         yls = [1e-8 1e-4];
         
         Wsc = 70*2*pi;
@@ -82,6 +84,7 @@ switch imod
         We = 1650;
         ds = abs(We-Ws)/100;
         dsmax = abs(We-Ws)/50;
+        xls = [250 450];
         yls = [5e-9 1e-5];
         
         Wsc = 312*2*pi;
@@ -90,7 +93,7 @@ switch imod
         log10a_s = -7.5;
         log10a_e = -3.8;
         dl10a = 0.0001;
-        dl10amax = 0.5;
+        dl10amax = 0.05;
     case 3
         Fas = [0.1 0.25 0.75 1.25 2.25 3.0];
 
@@ -98,52 +101,56 @@ switch imod
         We = 5200;
         ds = abs(We-Ws)/100;
         dsmax = abs(We-Ws)/50; 
+        xls = [800 900];
         yls = [3e-8 2e-5];
         
         Wsc = 840*2*pi;
         Wec = 850*2*pi;
         
-        log10a_s = -7;
+        log10a_s = -7.5;
         log10a_e = -3.8;
-        dl10a = 0.01;
+        dl10a = 0.0001;
         dl10amax = 0.05;
 end
 
 %% Harmonic Convergence based on FRF
 Hs = [1:2:40 40];
-PkPs = zeros(length(Hs), 2);
-Sc = zeros(1, 3);
+if isfile(sprintf('HConvDat_M%d.mat',imod))
+    load(sprintf('HConvDat_M%d.mat',imod), 'PkPs', 'Errs', 'errmax', 'Nhconv', 'ihconv');
+else
+    PkPs = zeros(length(Hs), 2);
+    Sc = zeros(1, 3);
 
-for ih=1:length(Hs)
-    Nh = Hs(ih);
-    Nhc = 2*Nh+1;
-    
-    beam.Fex1(end-1) = Fas(3);  % Forcing from last node
-	H1tmp = ((Kst-Wsc^2*beam.M)+1j*(Wsc*beam.D))\beam.Fex1;
-	X0 = zeros(Nd*Nhc, 1); X0(Nd+(1:2*Nd)) = [real(H1tmp); -imag(H1tmp)];
-    
-    Dscale = [1e-4*ones(Nd*Nhc,1); (Dst(1)+Dsl(1))/2];
-    Sopt = struct('jac','full','stepmax',1000,'MaxFfunEvals',500, ...
-        'dsmax', dsmax, 'Dscale', Dscale, 'dynamicDscale', 1);
+    for ih=1:length(Hs)
+        Nh = Hs(ih);
+        Nhc = 2*Nh+1;
 
-    Xc = solve_and_continue(X0, ...
-        @(X) HB_residual(X, beam, Nh, Nt, 'FRF'), Wsc, Wec, ds, Sopt);
-    Sc = [Xc(end, :); 
-        sqrt([1 0.5*ones(1,2*Nh)]*Xc(fdof:Nd:end-1,:).^2);
-        atan2d(-Xc(2*Nd+fdof,:), Xc(Nd+fdof,:))]';
-    PkPs(ih,:) = interp1(Sc(:,3), Sc(:,1:2), -90, 'pchip');
-    
-    fprintf('%d/%d Done.\n', ih, length(Hs))     
+        beam.Fex1(end-1) = Fas(3);  % Forcing from last node
+        H1tmp = ((Kst-Wsc^2*beam.M)+1j*(Wsc*beam.D))\beam.Fex1;
+        X0 = zeros(Nd*Nhc, 1); X0(Nd+(1:2*Nd)) = [real(H1tmp); -imag(H1tmp)];
+
+        Dscale = [1e-4*ones(Nd*Nhc,1); (Dst(1)+Dsl(1))/2];
+        Sopt = struct('jac','full','stepmax',1000,'MaxFfunEvals',500, ...
+            'dsmax', dsmax, 'Dscale', Dscale, 'dynamicDscale', 1);
+
+        Xc = solve_and_continue(X0, ...
+            @(X) HB_residual(X, beam, Nh, Nt, 'FRF'), Wsc, Wec, ds, Sopt);
+        Sc = [Xc(end, :); 
+            sqrt([1 0.5*ones(1,2*Nh)]*Xc(fdof:Nd:end-1,:).^2);
+            atan2d(-Xc(2*Nd+fdof,:), Xc(Nd+fdof,:))]';
+        PkPs(ih,:) = interp1(Sc(:,3), Sc(:,1:2), -90, 'pchip');
+
+        fprintf('%d/%d Done.\n', ih, length(Hs))     
+    end
+
+    % Convergence Criterion
+    errmax = 0.01*1e-2;
+    Errs = abs(PkPs-PkPs(end,:))./PkPs;
+    ihconv = find(max(Errs,[],2)<=errmax, 1 );
+    Nhconv = Hs(ihconv);
+
+    save(sprintf('HConvDat_M%d.mat',imod), 'PkPs', 'Errs', 'errmax', 'Nhconv', 'ihconv')
 end
-
-% Convergence Criterion
-errmax = 0.01*1e-2;
-Errs = abs(PkPs-PkPs(end,:))./PkPs;
-ihconv = find(max(Errs,[],2)<=errmax, 1 );
-Nhconv = Hs(ihconv);
-
-save(sprintf('HConvDat_M%d.mat',imod), 'PkPs', 'Errs', 'errmax', 'Nhconv', 'ihconv')
-
 %% Plotting Harmonic Convergence
 figure(100)
 clf()
@@ -169,14 +176,15 @@ for k=1:length(Fas)
 	H1tmp = ((Kst-Ws^2*beam.M)+1j*(Ws*beam.D))\beam.Fex1;
 	X0 = zeros(Nd*Nhc, 1); X0(Nd+(1:2*Nd)) = [real(H1tmp); -imag(H1tmp)];
 
-	Sopt = struct('jac','full','stepmax',1000,'MaxFfunEvals',500, ...
+	Sopt = struct('jac','full','stepmax',10000,'MaxFfunEvals',500, ...
         'dsmax', dsmax, 'Dscale', Dscale, 'dynamicDscale', 1);
 	Xcont{k} = solve_and_continue(X0, ...
-        @(X) HB_residual(X, beam, Nh, Nt, analysis), Ws, We, ds, Sopt);
+        @(X) HB_residual(X, beam, Nh, Nt, 'frf'), Ws, We, ds, Sopt);
 	Sols{k}  = [Xcont{k}(end, :); 
         sqrt([1 0.5*ones(1,2*Nh)]*Xcont{k}(fdof:Nd:end-1,:).^2);
         atan2d(-Xcont{k}(2*Nd+fdof,:), Xcont{k}(Nd+fdof,:))]';
-    Pks(k, :) = interp1(Sols{k}(:,3), Sols{k}(:,1:2), -90, 'pchip');
+    [~,is] = unique(Sols{k}(:,3));
+    Pks(k, :) = interp1(Sols{k}(is,3), Sols{k}(is,1:2), -90, 'pchip');
 end
 
 %% NMA
@@ -184,11 +192,6 @@ Nh = Nhconv;
 Nhc = 2*Nh+1;
 Dscale = [1e-1*ones(Nd*Nhc,1); Dst(imod); Zetas(imod); 1.0];
 
-        log10a_s = -7.5;
-        log10a_e = -3.8;
-        dl10a = 0.0001;
-        dl10amax = 0.5;
-        
 inorm = Nd-1;
 
 X0 = zeros(Nd*Nhc+2, 1);
@@ -212,30 +215,64 @@ Bkb = [10.^Xbb(end,:);  % modal amplitude
     (10.^Xbb(end,:)).*sqrt([1 0.5*ones(1, 2*Nh)]*Xbb(fdof:Nd:end-3,:).^2)]';
 
 %% Plotting FRF
+colos = distinguishable_colors(length(Fas), 'k');
+
+% NM-ROM Parameters
+zts = Bkb(:,3);
+oms = Bkb(:,2);
+p2  = oms.^2-2*(oms.*zts).^2;
+om4 = oms.^4;
+Phi_HB = Xbb(Nd+(1:Nd),:)-1j*Xbb(2*Nd+(1:Nd),:);
+Fsc = (abs(Phi_HB'*Fex1)./Bkb(:,1)).^2;
+mAmps = Bkb(:,5);
+
 figure(1)
 clf()
 semilogy(Bkb(:, 2)/(2*pi), Bkb(:, end), 'k--', 'LineWidth', 2); hold on
 
 figure(2)
 clf()
+livs = 10;
 aa = gobjects(size(Fas));
 for k=1:length(Fas)
+    om1 = sqrt(p2 + sqrt(p2.^2-om4 + Fsc*Fas(k)^2));
+    om2 = sqrt(p2 - sqrt(p2.^2-om4 + Fsc*Fas(k)^2));
+    
+    ris1 = find(imag(om1)==0);
+    ris2 = find(imag(om2)==0);
+    
+	phi1 = atan2d(-2*zts(ris1).*oms(ris1).*om1(ris1), oms(ris1).^2-om1(ris1).^2);
+    phi2 = atan2d(-2*zts(ris2).*oms(ris2).*om2(ris2), oms(ris2).^2-om2(ris2).^2);
+    
     figure(1)
-    semilogy(Sols{k}(:,1)/2/pi, Sols{k}(:,2), '-', 'LineWidth', 2); hold on
-    if k==3
-        semilogy(Pks(k,1)/2/pi, Pks(k,2), 'ko', 'MarkerFaceColor', 'k')
+    semilogy(Sols{k}(:,1)/2/pi, Sols{k}(:,2), '-', 'LineWidth', 2, 'Color', colos(k,:)); hold on
+    semilogy(om1(ris1)/2/pi, mAmps(ris1), '--', 'Color', colos(k,:))
+    semilogy(om2(ris2)/2/pi, mAmps(ris2), '--', 'Color', colos(k,:))
+	ivs = fix(linspace(1, length(ris1), livs));
+    semilogy(om1(ris1(ivs))/2/pi, mAmps(ris1(ivs)), '.', 'Color', colos(k,:), 'MarkerSize', 20)
+    ivs = fix(linspace(1, length(ris2), livs));
+    semilogy(om2(ris2(ivs))/2/pi, mAmps(ris2(ivs)), '.', 'Color', colos(k,:), 'MarkerSize', 20)
+	if k==3
+        semilogy(Pks(k,1)/2/pi, Pks(k,2), 'k.', 'MarkerSize', 30)
     end
     
     figure(2)
-    aa(k) = plot(Sols{k}(:,1)/2/pi, Sols{k}(:,3), '-', 'LineWidth', 2); hold on
-    if k==3
-        plot(Pks(k,1)/2/pi, -90, 'ko', 'MarkerFaceColor', 'k')
-    end
+    aa(k) = plot(Sols{k}(:,1)/2/pi, Sols{k}(:,3), '-', 'LineWidth', 2, 'Color', colos(k,:)); hold on
     legend(aa(k), sprintf('Fa = %.2f', Fas(k)))
+    plot(om1(ris1)/2/pi, phi1, '--', 'Color', colos(k,:))
+    plot(om2(ris2)/2/pi, phi2, '--', 'Color', colos(k,:))
+    ivs = fix(linspace(1, length(ris1), livs));
+    plot(om1(ris1(ivs))/2/pi, phi1(ivs), '.', 'Color', colos(k,:), 'MarkerSize', 20)
+    ivs = fix(linspace(1, length(ris2), livs));
+    plot(om2(ris2(ivs))/2/pi, phi2(ivs), '.', 'Color', colos(k,:), 'MarkerSize', 20)
+	if k==3
+        plot(Pks(k,1)/2/pi, -90, 'k.', 'MarkerSize', 30)
+    end
 end
 figure(1)
 xlabel('Forcing Frequency $\omega$ (Hz)')
 ylabel('RMS Response Displacement Amplitude (m)')
+xlim(xls)
 ylim(yls)
 print(sprintf('./FIGURES/FResp_M%d.eps',imod), '-depsc')
 
@@ -243,6 +280,7 @@ figure(2)
 legend(aa(1:end), 'Location', 'northeast')
 xlabel('Forcing Frequency $\omega$ (Hz)')
 ylabel('Response phase (degs)')
+xlim(xls)
 print(sprintf('./FIGURES/PhResp_M%d.eps',imod), '-depsc')
 
 %% Plotting NM Backbone
