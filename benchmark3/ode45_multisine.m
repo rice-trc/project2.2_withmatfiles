@@ -41,14 +41,19 @@ n = sys.Nmod;
 
 %% multisine, using time domain formulation
 
-R  = 3;           % Realizations. (one for validation and one for testing)
-P  = 7;           % Periods, we need to ensure steady state
+R  = 5;           % Realizations. (one for validation and one for testing)
+P  = 10;           % Periods, we need to ensure steady state
 
-% select Nt satisfying fs as 80% of Nyquist freq. We do this 
-f0 = 0.1;
-N  = ceil((f2-f1)/f0);      % freq points
-Nt = ceil(1/0.8 * f2*2/f0); % Time points per cycle
-fs = Nt*f0;                 % Samping frequency - implicit given
+% select Nt satisfying fs as 80% of Nyquist freq. Does not work yet.
+% f0 = 0.1;
+% N  = ceil((f2-f1)/f0);      % freq points
+% Nt = ceil(1/0.8 * f2*2/f0); % Time points per cycle
+% fs = Nt*f0;                 % Samping frequency - implicit given
+
+N  = 2e3;         % freq points
+f0 = (f2-f1)/N;
+Nt = 2^14;      % Time per cycle
+fs = Nt*f0;     % Samping frequency
 
 % set the type of multisine
 ms_type = 'full';  % can be 'full', 'odd' or 'random_odd'
@@ -97,10 +102,10 @@ end
 
 % only plot if it's supported (ie if we're not running it from cli)
 % https://stackoverflow.com/a/30240946
-if ~usejava('jvm') || ~feature('ShowFigureWindows')
+if usejava('jvm') && feature('ShowFigureWindows')
     % phi: convert to physical coordinate
     phi = sys.PHI([sys.L/2]);
-    ms_plot(t,y,u,freq.MS{r}.lines,phi,benchmark,A,dataname,savefig)
+    ms_plot(t,y,u,freq,MS{r}.lines,phi,benchmark,A,dataname,savefig)
 end
 
 end

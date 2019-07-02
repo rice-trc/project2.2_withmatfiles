@@ -1,4 +1,4 @@
-function [models,figHandle] = fLoopSubSpace(freq,G,covG,na,max_r,optimize,forcestability,showfigs,fs)
+function [models,hfig,data] = fLoopSubSpace(freq,G,covG,na,max_r,optimize,forcestability,showfigs,fs)
 %FLOOPSUBSPACE Loop frequency-domain subspace method over multiple model orders and sizes of the extended observability matrix.
 %
 %	Usage:
@@ -32,7 +32,7 @@ function [models,figHandle] = fLoopSubSpace(freq,G,covG,na,max_r,optimize,forces
 %		models : cell array where models{n} contains a 1 x 4 cell with the
 %		         A, B, C, and D matrices of the best model of order n (see
 %		         the Description for more information on 'best')
-%       figHandle : figure handle of the last plotted figure
+%       hfig : struct with figure handles of the figures
 %
 %	Input parameters:
 %		freq : vector of frequencies at which the FRF (or FRM) is given (in
@@ -232,66 +232,15 @@ unstablesLM(1:min_na - 1,:) = [];
 stabilizedSS = KSSs.*stabilizedSS;
 unstablesLM = KLMs.*unstablesLM;
 
+data = struct('KSSs',KSSs, 'KLMs',KLMs, 'stabilizedSS',stabilizedSS,...
+        'unstablesLM',unstablesLM);
 if showfigs
-    figure
-    semilogy(KSSs','.') % Cost function of all subspace models
-    hold on;
-    semilogy(stabilizedSS','o','Color',[0.5 0.5 0.5]) % Encircle stabilized models in gray
-    if optimize > 0
-        try
-            set(gca,'ColorOrderIndex',1) % Restart from the same color as in the KSSs plot
-        catch % Older Matlab versions restart by default from the same color, and 'ColorOrderIndex' is not available
-        end
-        semilogy(KLMs','*') % Cost function of all LM-optimized models
-        try
-            set(gca,'ColorOrderIndex',1) % Restart from the same color as in the KSSs plot
-        catch % Older Matlab versions restart by default from the same color, and 'ColorOrderIndex' is not available
-        end
-        semilogy(unstablesLM','o') % Encircle unstable models
-    end
-    ylabel('V_{WLS}')
-    xlabel('r')
-    legend(cellstr([repmat('n = ',max_na - min_na + 1,1) num2str((min_na:max_na)')]));
-    title({'Cost functions of subspace models (dots, stablilized models encircled in gray)', ...
-           'and of LM-optimized models (stars, unstable models encircled in color)'})
-    xlim([min_na (max_r + 1)])
-    set(gcf,'Name','Summary')
-    set(gcf,'NumberTitle','off')
-    
-    for n = na % Plot FRFs of the best model for each model order
-        figHandle = figure;
-        model = models{n};
-        try % Maybe no stable models were estimated
-            A = model{1};
-            B = model{2};
-            C = model{3};
-            D = model{4};
-            GModel = fss2frf(A,B,C,D,freq/fs);
-            fPlotFrfMIMO(GModel,freq);
-            fPlotFrfMIMO(G,freq,'b.');
-            fPlotFrfMIMO(G-GModel,freq,'r.');
-            temp = zeros(m*p,F);
-            for i = 1:m*p
-                temp(i,:) = covG(i,i,:);
-            end
-            temp2 = zeros(size(G));
-            for f = 1:F
-                temp2(:,:,f) = reshape(temp(:,f),p,m);
-            end
-            stdG = sqrt(temp2);
-            fPlotFrfMIMO(stdG,freq,'k--');
-            set(gcf,'Name',['n = ' num2str(n)])
-            set(gcf,'NumberTitle','off')
-            
-            legend('BLA (parametric)','BLA (nonpar)','residual','standard deviation')
-        catch
-            gca;
-            title('No stable models');
-        end
-    end
+    hfig = fPlotSubSpace(data,models,G,covG,freq,fs,na,max_r);
 else
-    figHandle = [];
-end;
+    hfig = [];
+end
+
+end
 
 %}
 

@@ -6,26 +6,53 @@
 %     nonparametric model
 %  3) estimate the parameters in the full PNLSS model
 
-close all
+% close all
 clearvars
 % clc
 
-srcpath = '../src/pnlss';
-addpath(genpath(srcpath));
-figpath = './fig/';
+srcdir = '../src/pnlss';
+addpath(srcdir);
+srcdir = '../src/matlab';
+addpath(genpath(srcdir));
 
-dataname = 'ms_full';
-A = 15;
+savename = 'pnlss';
+benchmark = 1;
+data.A = 1;
+data.name = 'ms_full';
 
+show_ms = true;
 %%
 % addnoise = true;
 addnoise = false;
 savefig = true;
 
-load(sprintf('data/A%d_%s',A,dataname))
+% only plot if it's supported (ie if we're not running it from cli)
+% https://stackoverflow.com/a/30240946
+if ~usejava('jvm') || ~feature('ShowFigureWindows')
+    show_ms = false;
+    show_pnlss = false;
+end
+
+
+load(sprintf('data/b%d_A%d_%s',benchmark,data.A,data.name))
+if show_ms
+    % plot the middle deflection
+    phi = sys.PHI([sys.L/2]);
+    ms_plot(t,y,u,freq,MS{1}.lines,phi,benchmark,data.A,data.name) %savefig
+end
 
 [Nt,P,R,p] = size(y);
 [Nt,P,R,m] = size(u);
+
+% create measurement points
+switch benchmark
+    case 1
+        PHIS = sys.PHI([sys.L/2]);
+    case 2
+        PHIS = sys.PHI([sys.L/4; sys.L/2; 3/4*sys.L]);
+    case 3
+        PHIS = sys.PHI([sys.L/4; sys.L/2; 3/4*sys.L]);
+end
 
 % convert to measurement points using modal shapes from Phi.
 nPHIS = size(PHIS,1);
@@ -35,10 +62,6 @@ for i = 1:nPHIS
 end
 y = yres;
 p = nPHIS;
-
-% % use middle deflection
-% y = PHI_L2*reshape(y,[],n)';
-% y = reshape(y,[Nt,P,R]);
 
 
 %% Add colored noise to the output
@@ -69,17 +92,15 @@ yest = y(:,Ptr:end,1:R,:);
 % standard deviation of the generated signal
 uStd = mean(mean(std(uest)));
 
-% lines = cell2mat(cellfun(@(c) c.lines, MS, 'UniformOutput', false));
-lines = MS{1}.lines;
-lines(lines==1) = [];
 %% Estimate nonparametric linear model (BLA)
 
 % m: number of inputs, p: number of outputs
 uest = permute(uest,[1,4,3,2]); % N x m x R x P
 yest = permute(yest,[1,4,3,2]); % N x p x R x P
 covY = fCovarY(yest); % Noise covariance (frequency domain)
+lines = MS{1}.lines;
 
-
+%%
 U = fft(uest); U = U(lines,:,:,:); % Input spectrum at excited lines
 Y = fft(yest); Y = Y(lines,:,:,:); % Output spectrum at excited lines
 
@@ -88,21 +109,26 @@ Y = fft(yest); Y = Y(lines,:,:,:); % Output spectrum at excited lines
 % total distortion level includes nonlinear and noise distortion
 % G: FRF; covGML: noise + NL; covGn: noise (all only on excited lines)
 [G,covGML,covGn] = fCovarFrf(U,Y); 
+bla.G = G; bla.covGML = covGML; bla.covGn = covGn; bla.freq = freq;
+bla.lines = lines; bla.covY = covY;
 % figure;
-% subplot(2,1,1); semilogy(freq(lines),abs(squeeze(G(:))));
+% subplot(2,1,1); plot(freq(lines),db(abs([G(:) covGML(:) covGn(:)])));
+% xlabel('Frequency (Hz)'); ylabel('Amplitude (dB)')
+% legend('FRF','Total distortion','Noise distortion')
 % subplot(2,1,2); plot(freq(lines),rad2deg(angle(G(:))))
+% xlabel('Frequency (Hz)'); ylabel('Angle (degree)')
+
 %% Estimate linear state-space model (frequency domain subspace)
 
 % Choose model order
-na   = 4;%[2,3,4];
-maxr = 5;%20;
-% Excited frequencies (normalized)
+na   = [2];%[2,3,4];
+maxr = 20;
+% Excited frequencies (normalized). -1 because lines are given wrt. fft.
 freq_norm = (lines-1)/Nt;
 
 % Uncomment for uniform weighting (= no weighting)
 % covGML = repmat(eye(1),[1 1 length(lines)]);
-
-models = fLoopSubSpace(freq_norm,G,covGML,na,maxr,100);
+[linmodels, hfig, subdata]= fLoopSubSpace(freq_norm,bla.G,bla.covGML,na,maxr,100);
 
 % Extract linear state-space matrices from best model on validation data
 Nval = length(uval);
@@ -110,7 +136,7 @@ tval = (0:Nval-1)/fs;
 min_err = Inf;
 min_na = NaN;
 for n = na
-    model = models{n};
+    model = linmodels{n};
     A = model{1}; B = model{2}; C = model{3}; D = model{4};
     [A,B,C] = dbalreal(A,B,C); % Compute balanced realization
     yval_hat = lsim(ss(A,B,C,D,1/fs),uval,tval);
@@ -123,10 +149,12 @@ for n = na
     end
 end
 % select the best model
-model = models{min_na};
+model = linmodels{min_na};
 [A,B,C,D] = model{:};
 % Balanced realization
 [A,B,C] = dbalreal(A,B,C);
+n = length(A);
+fprintf('Model order selected, n: %d\n',n)
 
 
 %% Estimate PNLSS model
@@ -156,9 +184,6 @@ whichtermsy = 'empty';
 MaxCount = 100;
 lambda = 100;
 
-% Choose model order
-n = min_na;
-
 % Initial linear model in PNLSS form
 model = fCreateNLSSmodel(A,B,C,D,nx,ny,T1,T2);
 
@@ -185,7 +210,7 @@ modellintest = model;modellintest.T1 = 0;
 ytest_lin = fFilterNLSS(modellintest,utest);
 errtest_lin = ytest-ytest_lin;
 
-% We do not use weighting
+% We do not use weighting for PNLSS models.
 % for kk = size(covY,3):-1:1
 %     W(:,:,kk) = fSqrtInverse(covY(:,:,kk)); % Frequency weighting
 % end
@@ -227,138 +252,30 @@ fprintf('e_est_lin:\t %0.3e\t e_est_nl:\t %0.3e\n', err(1,:))
 fprintf('e_val_lin:\t %0.3e\t e_val_nl:\t %0.3e\n', err(2,:))
 fprintf('e_test_lin:\t %0.3e\t e_test_nl:\t %0.3e\n',err(3,:))
 
+estdata = [yest errest_lin errest_nl];
+valdata = [yval errval_lin errval_nl];
+testdata = [ytest errtest_lin errtest_nl];
 
-save('./data/pnlssout_try0.mat', 'modellinest', 'model','valerr','valerrs')
+sig = struct('P',P, 'R',R, 'Nt',Nt, 'p',p, 'm',m, 'fs',fs);
+save(sprintf('data/b%d_A%d_%s',benchmark,data.A,savename),...
+    'modellinest','model','valerr','valerrs','estdata','valdata','testdata',...
+    'bla','sig','subdata')
 
 %% Results
 
 % convert to continious time for modal analysis of linear part
-sys = d2c(ss(model.A,model.B,model.C,model.D,1/fs));
-sd = modal(sys.A,sys,C);
-disp(['Nat freq' sd.wn newline 'damping' sd.zeta])
+sys_ct = d2c(ss(model.A,model.B,model.C,model.D,1/fs));
+sd = modal(sys_ct.A,sys_ct.C);
+wn = sprintf('%0.5g, ', sd.wn);
+zeta = sprintf('%0.5g, ', sd.zeta);
+disp('Identified Modal Parameters')
+fprintf('Nat freq %s Hz. \ndamping %s\n',wn,zeta)
 
 % similarity transform to get state space matrices in physical coordinates
-[Ap,Bp,Cp,T] = ss2phys(sys.A,sys.B,sys.C);
+[Ap,Bp,Cp,T] = ss2phys(sys_ct.A,sys_ct.B,sys_ct.C);
 sys_phys = ss(Ap,Bp,Cp,model.D);
 
-% handle to figs. For saving plot
-hfig = {};
-
-%% optimization path / convergence
-figure;
-plot(db(valerrs));
-hold on
-plot(i,db(min_valerr),'r.','Markersize',10)
-xlabel('Successful iteration number')
-ylabel('Validation error [dB]')
-title('Selection of the best model on a separate data set')
-hfig(end+1) = {{gcf, 'convergence'}};
-
-%% Estimation data
-cmap = distinguishable_colors(3,'k');
-
-plottime = [yest errest_lin errest_nl];
-plottime = reshape(plottime, [Nt*R,p,3]);
-plotfreq = fft(reshape(plottime,[Nt,R,p,3]));
-plotfreq = squeeze(mean(plotfreq,2));
-
-% plot time series individual
-for i=1:p
-figure;
-plot(t(1:Nt*R),squeeze(plottime(:,i,:)))
-xlabel('Time (s)')
-ylabel('Output (errors)')
-legend('output','linear error','PNLSS error')
-errstr = sprintf('rms(y-y_mod) = %0.3e\n(= Output error of the best PNLSS model on the estimation data)\n',rms(yest(:,i)-y_mod(:,i)) );
-title(sprintf('Estimation results p: %d\n%s',errstr))
-disp(' ')
-disp(errstr)
-% disp(['rms(noise(:))/sqrt(P) = ' num2str(rms(noise(:))/sqrt(P)) ' (= Noise level)'])
-hfig(end+1) = {{gcf, sprintf('est_time_p%d',p)}};
+%% plot
+if show_pnlss
+    pnlss_plot(t,sig,bla,estdata,valdata,testdata,valerrs,model,savefig)
 end
-
-% plot time series together
-figure;
-plot(t(1:Nt*R),reshape(plottime, [Nt*R, p*3]))
-xlabel('Time (s)')
-ylabel('Output (errors)')
-legend('output','linear error','PNLSS error')
-errstr = sprintf('sum(rms(y-y_mod)) = %0.3e\n(= Output error of the best PNLSS model on the estimation data)\n',sum(rms(yest-y_mod,1)) );
-title(['Estimation results' newline errstr])
-disp(' ')
-disp(errstr)
-hfig(end+1) = {{gcf, sprintf('est_time')}};
-
-% error in frequency domain
-for i=1:p
-figure;
-hold on
-plot(freq(1:end/2),db(squeeze(plotfreq(1:end/2,i,:))),'.') %,'Color',cmap)
-plot(freq(1:end/2),db(sqrt(P*squeeze(covY(i,i,:)))), 'k.')
-xlabel('Frequency (Hz)')
-ylabel('Output (errors) (dB)')
-legend('Output','Linear error','PNLSS error','noise')
-title(sprintf('Estimation results p: %d',i))
-hfig(end+1) = {{gcf, sprintf('est_err_p%d',i)}};
-end
-
-%% Validation data
-plottime = [yval errval_lin errval_nl];
-plottime = reshape(plottime, [Nt,p,3]);
-plotfreq = fft(plottime);
-
-for i=1:p
-figure;
-plot(freq(1:end/2),db(squeeze(plotfreq(1:end/2,i,:))),'.') % ,'Color',cmap(i,:))
-xlabel('Frequency (Hz)')
-ylabel('Output (errors) (dB)')
-legend('Output','Linear error','PNLSS error')
-title(sprintf('Validation results p: %d',i))
-hfig(end+1) = {{gcf, sprintf('val_err_p%d',i)}};
-end
-
-%% Test, ie. newer seen data
-plottime = [ytest errtest_lin errtest_nl];
-plottime = reshape(plottime, [Nt,p,3]);
-plotfreq = fft(plottime);
-
-for i=1:p
-figure;
-plot(freq(1:end/2),db(squeeze(plotfreq(1:end/2,i,:))),'.')
-xlabel('Frequency');
-ylabel('Output (errors) (dB)');
-legend('Output','Linear error','PNLSS error')
-title(sprintf('Test results p: %d',i))
-hfig(end+1) = {{gcf, sprintf('test_err_p%d',i)}};
-end
-
-%% BLA plot. We can estimate nonlinear distortion
-% total and noise distortion averaged over P periods and M realizations
-% total distortion level includes nonlinear and noise distortion
-
-for i=1:p
-figure;
-hold on;
-plot(freq(lines),db(abs(squeeze(G(i,1,:)))))
-plot(freq(lines),db(abs(squeeze(covGn(i,i,:)))*R,'power'),'s')
-plot(freq(lines),db(abs(squeeze(covGML(i,i,:)))*R,'power'),'*')
-xlabel('frequency (Hz)')
-ylabel('magnitude (dB)')
-title(sprintf('Estimated BLA p: %d)',i))
-legend('BLA FRF','Noise Distortion','Total Distortion','Location','nw')
-hfig(end+1) = {{gcf, sprintf('bla_p%d',i)}};
-end
-%% save figures
-
-if savefig
-    path = './fig/';
-    for i=1:length(hfig)
-        h = hfig{i}{1};
-        fname = hfig{i}{2};
-        % change figure background from standard grey to white
-        set(h, 'Color', 'w');
-        export_fig(h, strcat(path,fname), '-pdf', '-png');
-    end
-    
-end
-
