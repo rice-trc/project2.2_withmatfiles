@@ -43,16 +43,18 @@ n = sys.Nmod;
 
 R  = 3;           % Realizations. (one for validation and one for testing)
 P  = 7;           % Periods, we need to ensure steady state
-N  = 1e3;         % freq points
-f0 = (f2-f1)/N;
+
+% select Nt satisfying fs as 80% of Nyquist freq. We do this 
+f0 = 0.1;
+N  = ceil((f2-f1)/f0);      % freq points
+Nt = ceil(1/0.8 * f2*2/f0); % Time points per cycle
+fs = Nt*f0;                 % Samping frequency - implicit given
+
 % set the type of multisine
 ms_type = 'full';  % can be 'full', 'odd' or 'random_odd'
 
-Nt = 2^13;      % Time per cycle
-fs = Nt*f0;     % Samping frequency
-
 if fs/2 <= f2
-    error('Increase sampling rate!');
+    error('Increase sampling rate! Current f0:%g, requires atleast Nt:%g',f0,f2*2/f0);
 end
 
 q0   = zeros(n,1);
@@ -65,8 +67,8 @@ t    = linspace(t1, t2, Nt*P+1);  t(end) = [];
 freq = (0:Nt-1)/Nt*fs;   % frequency content
 nt = length(t);          % total number of points
 
-fprintf('running ms benchmark:%d. R:%d, P:%d, Nt:%d, fs:%g\n',...
-    benchmark,R,P,Nt,fs);
+fprintf('running ms benchmark:%d. R:%d, P:%d, Nt:%d, fs:%g, f0:%g\n',...
+    benchmark,R,P,Nt,fs,f0);
 for A = exc_lev
 u = zeros(Nt,P,R);
 y = zeros(Nt,P,R,n);
