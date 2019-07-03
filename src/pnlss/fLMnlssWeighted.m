@@ -110,10 +110,10 @@ function [model,y_mod,models,Cost] = fLMnlssWeighted(u,y,model,MaxCount,W,lambda
 %           Fixed a bug where the time-domain weighting produced a
 %           matrix-valued cost function instead of a scalar one.
 %
-%	Copyright (c) Vrije Universiteit Brussel – dept. ELEC
+%	Copyright (c) Vrije Universiteit Brussel ï¿½ dept. ELEC
 %   All rights reserved.
 %   Software can be used freely for non-commercial applications only.
-%   Disclaimer: This software is provided “as is” without any warranty.
+%   Disclaimer: This software is provided ï¿½as isï¿½ without any warranty.
 %
 %	See also fCreateNLSSmodel, fFilterNLSS, fComputeIndicesTransientRemovalArb, fWeightJacobSubSpace, fReIm
 
@@ -218,11 +218,11 @@ else
 end
 
 % Prepare for Levenberg-Marquardt optimization
-cwd = pwd; % The current working directory
-addpath(cwd); % Add current working directory to the search path
-cd(tempdir); % Switch to the system's temporary folder
-warning('off','MATLAB:pack:InvalidInvocationLocation'); % Disable warning
-pack; % Consolidate workspace memory
+% cwd = pwd; % The current working directory
+% addpath(cwd); % Add current working directory to the search path
+% cd(tempdir); % Switch to the system's temporary folder
+% warning('off','MATLAB:pack:InvalidInvocationLocation'); % Disable warning
+% pack; % Consolidate workspace memory
 disp('Starting L.M. Optimization...')
 % inittime = clock; % Save current time to estimate the end time during the optimization 
 
@@ -373,7 +373,7 @@ end
 y_mod = fFilterNLSS(model,u); % Output of the optimized model
 
 disp('End of L.M. Optimization.')
-cd(cwd); % Return to original working directory
+% cd(cwd); % Return to original working directory
 end
 
 % ---------------- Help functions ----------------
