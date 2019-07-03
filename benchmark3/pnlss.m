@@ -7,9 +7,11 @@
 %  3) estimate the parameters in the full PNLSS model
 
 % close all
-clearvars
+clear all
+% clearvars
 % clc
 
+isOctave = exist('OCTAVE_VERSION', 'builtin') ~= 0;
 srcdir = '../src/pnlss';
 addpath(srcdir);
 srcdir = '../src/matlab';
@@ -34,7 +36,12 @@ if isequal(scr(3:4),[1 1])
     show_pnlss = false;
 end
 
-tmp=load(sprintf('data/b%d_A%d_%s',benchmark,data.A,data.name));
+if isOctave
+    pkg load control % for ss/lsim
+    pkg load signal  % for rms
+end
+
+load(sprintf('data/b%d_A%d_%s',benchmark,data.A,data.name));
 if show_ms
     % plot the middle deflection
     phi = sys.PHI([sys.L/2]);
@@ -84,7 +91,7 @@ yval = y(:,end,R-1,:); yval = reshape(yval,[],p);
 
 % All other realizations for estimation. But remember to remove transient!
 R = R-2;
-Ptr = 3;
+Ptr = 2;
 P = P-Ptr;
 uest = u(:,Ptr:end,1:R,:);
 yest = y(:,Ptr:end,1:R,:);
@@ -138,7 +145,9 @@ min_na = NaN;
 for n = na
     model = linmodels{n};
     A = model{1}; B = model{2}; C = model{3}; D = model{4};
-    [A,B,C] = dbalreal(A,B,C); % Compute balanced realization
+    if ~isOctave
+        [A,B,C] = dbalreal(A,B,C); % Compute balanced realization
+    end
     yval_hat = lsim(ss(A,B,C,D,1/fs),uval,tval);
     err = yval - yval_hat; 
     % Rms value of the last period of the error signal
@@ -151,8 +160,10 @@ end
 % select the best model
 model = linmodels{min_na};
 [A,B,C,D] = model{:};
-% Balanced realization
-[A,B,C] = dbalreal(A,B,C);
+if ~isOctave
+    % Balanced realization
+    [A,B,C] = dbalreal(A,B,C);
+end
 n = length(A);
 fprintf('Model order selected, n: %d\n',n)
 
