@@ -26,15 +26,15 @@ show_ms = true;
 addnoise = false;
 savefig = true;
 
-% only plot if it's supported (ie if we're not running it from cli)
+% ensure it is possible to show the display. Octave compatible
 % https://stackoverflow.com/a/30240946
-if ~usejava('jvm') || ~feature('ShowFigureWindows')
+scr = get(0,'ScreenSize');
+if isequal(scr(3:4),[1 1])
     show_ms = false;
     show_pnlss = false;
 end
 
-
-load(sprintf('data/b%d_A%d_%s',benchmark,data.A,data.name))
+tmp=load(sprintf('data/b%d_A%d_%s',benchmark,data.A,data.name));
 if show_ms
     % plot the middle deflection
     phi = sys.PHI([sys.L/2]);
@@ -65,8 +65,8 @@ p = nPHIS;
 
 
 %% Add colored noise to the output
-rng(10);
 if addnoise
+    rng(10);
     noise = 1e-3*std(y(:,end,end))*randn(size(y)); % Output noise signal
     % Do some filtering
     noise(1:end-1,:,:) = noise(1:end-1,:,:) + noise(2:end,:,:);

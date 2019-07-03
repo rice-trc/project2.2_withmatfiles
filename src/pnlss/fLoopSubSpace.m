@@ -129,9 +129,10 @@ if (nargin < 7) || isempty(forcestability)
     forcestability = true; % By default, a stable model is forced
 end
 
-% ensure it is possible to show the display
-% https://stackoverflow.com/a/6776191
-if usejava('jvm') && ~feature('ShowFigureWindows')
+% ensure it is possible to show the display. Octave compatible
+% https://stackoverflow.com/a/30240946
+scr = get(0,'ScreenSize');
+if isequal(scr(3:4),[1 1])
     showfigs = false;
 end
 
