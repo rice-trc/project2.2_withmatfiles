@@ -133,7 +133,6 @@ for iex=1:length(exc_lev)
 
 end
 
-
 %% NMA
 N=2*3*H+1;
 
@@ -156,8 +155,8 @@ Psi = zeros((2*H+1)*Nmod,1);
 Psi(Nmod+(1:Nmod)) = phi;
 x0 = [Psi;om;0];
 
-ds      = .1;
-Sopt    = struct('dynamicDscale',1,'stepmax',5e4);
+ds      = .001;
+Sopt    = struct('dynamicDscale',1,'stepmax',5e4,'dsmax',0.002);
 [X_NM,Solinfo,Sol] = solve_and_continue(x0,...
     @(X) HB_residual(X,oscillator,H,N,analysis,inorm),...
     log10a_s,log10a_e,ds, Sopt);

@@ -210,7 +210,6 @@ fprintf('e_est_lin:\t %0.3e\t e_est_nl:\t %0.3e\n', err(1,:))
 fprintf('e_val_lin:\t %0.3e\t e_val_nl:\t %0.3e\n', err(2,:))
 fprintf('e_test_lin:\t %0.3e\t e_test_nl:\t %0.3e\n',err(3,:))
 
-
 save('./data/pnlssout_try0.mat', 'modellinest', 'model')
 
 %% Results

@@ -48,16 +48,20 @@ Vst = Vst(:, si); Vst = Vst./sqrt(diag(Vst'*beam.M*Vst));
 
 %% Rayleigh damping
 % Desired
-zs = [8e-3; 2e-3];
+zs = [8e-3; 8e-3];
 ab = [ones(length(zs),1) Dst(1:length(zs)).^2]\(2*zs.*Dst(1:length(zs)));
 
 beam.D = ab(1)*beam.M + ab(2)*Kst;
 
-Zetas = diag(Vst'*beam.D*Vst)./(2*Dst);
+Zetas = diag(Vst'*beam.D*Vst)./(2*Dst)
+
+Zetas_req = 8e-3*ones(beam.n,1);
+
+beam.D = inv(Vst')*diag(2*Dst.*Zetas_req)*inv(Vst);
 
 %% Parameters for HBM
 Nt = 2^10;
-imod = 3;  % Desired mode
+imod = 1;  % Desired mode
 
 switch imod
     case 1
