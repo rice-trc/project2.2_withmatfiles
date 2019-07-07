@@ -392,7 +392,7 @@ while istep<=Sopt.stepmax
             [X;XP(end)],Xref,zref,fun_residual,Sopt),XP(1:end-1),Solopt);
     end
     %% ACCEPT/REJECT POINT
-    if iEx<1 || sqrt(Rext'*Rext)>Sopt.eps
+    if iEx<1 % || sqrt(Rext'*Rext)>Sopt.eps !<(Commenting out - Nidish)
         if  (Sopt.ds == Sopt.dsmin) || (ierr>=Sopt.errmax)
             if Sopt.stoponerror
                 % Delete unused fields and break

@@ -44,7 +44,7 @@ fun_postprocess = @(Y) mhbm_postprocess(Y,fun_residual,...
 A_hb  = [Sol.Amax];
 % Sol = [];
 % model.F = model.E(1,:)*0;
-Ws = Xr(end,:);
+W_hb = Xr(end,:);
 % As = zeros(size(Xr(end,:)));
 % for i=1:size(Xr,2)
 %     Sol = mhbm_post_amplitude_pnlss(Sol, Xc(:,i), 1, Uc, model.C, model.D, model.F, model.xpowers, Nh, Ntd);
@@ -55,6 +55,6 @@ Ws = Xr(end,:);
 % YAmp = sqrt([1 0.5*ones(1,2*Nh)]*Yr.^2)
 
 figure
-plot(Ws/2/pi,A_hb, '.-')
+plot(W_hb/2/pi,A_hb, '.-')
 % hold on
 % plot(Ws/2/pi,abs(test1),'.--')

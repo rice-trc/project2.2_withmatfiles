@@ -1,9 +1,9 @@
 %% mhbm_aft_residual_pnlss.m
-function [R,dR_dXOm, dR_dX,dR_dOm,Fnlc,Xc,Om] = ...
-    mhbm_aft_residual_pnlss_discrete(Xv,At,Bt,Et,pp,dt,Uc,Nh,Ntd)
+function [R,dR_dXOm,dR_dX,dR_dOm,Fnlc,Xc,Om] = ...
+    mhbm_aft_residual_pnlss_discrete(XO,At,Bt,Et,pp,dt,Uc,Nh,Ntd)
     
-    X = Xv(1:end-1);
-    Om = X(end);
+    X = XO(1:end-1);
+    Om = XO(end);
     %% Real-to-complex conversion
     nx = size(At,2);
     i0 = 1:nx;
