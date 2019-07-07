@@ -36,9 +36,9 @@ function Sol = mhbm_post_amplitude_pnlss(Sol,XcIN,~,UcIN,Ct,Dt,Ft,pp,Nh,Ntd)
         Yi = [real(Yc(i));zeros(2*Nhev,1)];
         Yi(2:2:end) = real(Yc(ny+i:ny:end));
         Yi(3:2:end) = -imag(Yc(ny+i:ny:end));
-%         Sol.A(i) = mhbm_maximum(Yi) - Yi(1);
-%         Sol.Amax(i) = mhbm_maximum(Yi);
+        Sol.A(i) = mhbm_maximum(Yi) - Yi(1);
+        Sol.Amax(i) = mhbm_maximum(Yi);
 
-        Sol.A(i) = sqrt([1 0.5*ones(1, 2*Nhev)]*Yi.^2);  % Parseval's amplitude
+%         Sol.A(i) = sqrt([1 0.5*ones(1, 2*Nhev)]*Yi.^2);  % Parseval's amplitude
     end
 end
