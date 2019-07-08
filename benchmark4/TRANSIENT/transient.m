@@ -34,7 +34,7 @@ fs = 500;
 Nfpts = (f2-f1)/df+1;
 freqs = linspace(f1, f2, Nfpts);
 har = ones(Nfpts, 1);
-famp = 0.01;
+famp = 0.8;
 %% Finite Element Model
 Ndof = Nn*3;
 Xcs  = linspace(0, len, Nn);  % X Coordinates
@@ -167,7 +167,7 @@ save(sprintf('./RUN%d.mat',rn), 'T', 'X', 'Z', 'Fex', 'Prds', 'f1', 'f2', 'df', 
 end
 
 %% Resave data
-fdir = 'famp01';
+fdir = 'famp001';
 
 load(sprintf('./%s/RUN1.mat',fdir), 'f2', 'df', 'Prds', 'X');
 fsamp = 5*f2;
@@ -198,7 +198,7 @@ save(sprintf('./%s/CLCLEF_MULTISINE.mat',fdir), 'u', 'y', 'ydot', 'f1', 'f2', 'd
 
 
 %% Plot
-fdir = 'famp01';
+fdir = 'famp001';
 rn = 1;
 load(sprintf('./%s/RUN%d.mat',fdir,rn), 'T', 'X', 'Z', 'Fex', 'Prds', ...
     'f1', 'f2', 'df', 'freqs', 'fex');
@@ -223,4 +223,4 @@ xlabel('Frequency (Hz)')
 ylabel('Content')
 
 legend('Forcing (N)', 'Response (m)')
-print(sprintf('%s_ts.eps',fdir), '-depsc')
+% print(sprintf('%s_ts.eps',fdir), '-depsc')
