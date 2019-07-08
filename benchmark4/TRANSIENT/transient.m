@@ -34,7 +34,7 @@ fs = 500;
 Nfpts = (f2-f1)/df+1;
 freqs = linspace(f1, f2, Nfpts);
 har = ones(Nfpts, 1);
-famp = 0.5;
+famp = 0.01;
 %% Finite Element Model
 Ndof = Nn*3;
 Xcs  = linspace(0, len, Nn);  % X Coordinates
@@ -98,7 +98,8 @@ fricts.N0     = [N0];
 fricts.nel    = 1;
 
 %% Multisine Excitation
-for rn = 2:4
+Repeats = 4;
+for rn = 1:Repeats
 rng(rn);
 fex.dofs  = [(Nex-1)*3+2]-3;
 fex.fval  = famp;
@@ -148,7 +149,7 @@ pars.abstol = 1e-6;
 pars.pow = 1/4;
 pars.maxstep = 1e-3;
 % Display
-pars.Display = 'off';
+pars.Display = 'min';
 
 % Max Simulation time
 Prds = 8;
@@ -161,8 +162,8 @@ toc
 
 %% Saving
 Fex = fex.ffun{1}(T);
-% save(sprintf('./RUN%d.mat',rn), 'T', 'X', 'Z', 'Fex', 'Prds', 'f1', 'f2', 'df', ...
-%     'freqs', 'fex');
+save(sprintf('./RUN%d.mat',rn), 'T', 'X', 'Z', 'Fex', 'Prds', 'f1', 'f2', 'df', ...
+    'freqs', 'fex');
 end
 
 %% Resave data
@@ -172,11 +173,11 @@ load(sprintf('./%s/RUN1.mat',fdir), 'f2', 'df', 'Prds', 'X');
 fsamp = 5*f2;
 Nt = 5*f2/df;  % Time points per period
 Nd = size(X,2)/2;   % Number of dynamical DOFs
-u = zeros(Nt, Prds, 4);
-y = zeros(Nt, Prds, 4, Nd);
-ydot = zeros(Nt, Prds, 4, Nd);
+u = zeros(Nt, Prds, Repeats);
+y = zeros(Nt, Prds, Repeats, Nd);
+ydot = zeros(Nt, Prds, Repeats, Nd);
 
-for rn=1:4
+for rn=1:Repeats
     load(sprintf('./%s/RUN%d.mat',fdir,rn), 'T', 'X', 'Z', 'Fex', 'Prds', ...
         'f1', 'f2', 'df', 'freqs', 'fex');
     Tmax = (Prds+1)/df;
@@ -194,6 +195,7 @@ fdof = fex.dofs;
 famp = fex.fval;
 save(sprintf('./%s/CLCLEF_MULTISINE.mat',fdir), 'u', 'y', 'ydot', 'f1', 'f2', 'df', ...
     'fsamp', 'freqs', 't', 'famp', 'fdof');
+
 
 %% Plot
 fdir = 'famp01';

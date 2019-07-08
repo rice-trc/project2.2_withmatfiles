@@ -12,6 +12,7 @@ clearvars
 
 srcpath = '../src/pnlss';
 addpath(genpath(srcpath));
+addpath('../src/matlab/')
 figpath = './fig/';
 
 %%
@@ -19,7 +20,10 @@ figpath = './fig/';
 addnoise = false;
 savefig = true;
 
-load('ode45A21.mat')
+Alevel = 35;
+load(sprintf('data/ode45_multisine_A%d.mat',Alevel))
+
+% load('ode45A21.mat')
 freq = (0:Nt-1)*f0;   % frequency content
 [Nt,P,R,n] = size(y);
 
@@ -210,7 +214,7 @@ fprintf('e_est_lin:\t %0.3e\t e_est_nl:\t %0.3e\n', err(1,:))
 fprintf('e_val_lin:\t %0.3e\t e_val_nl:\t %0.3e\n', err(2,:))
 fprintf('e_test_lin:\t %0.3e\t e_test_nl:\t %0.3e\n',err(3,:))
 
-save('./data/pnlssout_try0.mat', 'modellinest', 'model')
+save(sprintf('./data/pnlssout_A%d.mat',Alevel), 'modellinest', 'model')
 
 %% Results
 

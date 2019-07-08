@@ -41,6 +41,9 @@ function Sol = mhbm_post_amplitude_pnlss(Sol,XcIN,~,UcIN,Ct,Dt,Ft,pp,Nh,Ntd)
 
         Sol.Apv(i) = sqrt([1 0.5*ones(1, 2*Nhev)]*Yi.^2);  % Parseval's amplitude
         Sol.Aph1(i) = atan2d(-Yi(3),Yi(2));  % First harmonic phase
-        Spl.Aph1(i) = rad2deg(angle(Yi(2)-1j*Yi(3)));
+%         if Sol.Aph1(i)>0
+%             Sol.Aph1(i) = 180-Sol.Aph1(i);
+%         end
+%         Sol.Aph1(i) = atan2d(-abs(Yi(3)),abs(Yi(2)));  % First harmonic phase
     end
 end

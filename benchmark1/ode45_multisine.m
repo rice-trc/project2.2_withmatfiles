@@ -4,7 +4,7 @@
 % adaptive time steps. This is not the case if the multisine is calculated
 % a priori, fx. using PNLSS
 
-close all
+% close all
 clearvars
 addpath('../src/matlab/')
 
@@ -42,27 +42,40 @@ model.nlcof = struct('power', p, 'coef', E);
 
 %% multisine, using time domain formulation
 
+upsamp = 1;  % Upsampling factor
 R  = 4;           % Realizations. (one for validation and one for testing)
 P  = 8;           % Periods, we need to ensure steady state
-f1 = 0;          % low freq
-f2 = 400;        % high freq
+f1 = 200;          % low freq
+f2 = 700;        % high freq
 fs = 1200;       % 5*f2. Must be fs>2*f2. Nyquist freq, you know:)
 N  = 1e3;         % freq points
 f0 = (f2-f1)/N;
-A  = 21.12;          % amplitude
+A  = 35          % amplitude
 
 Nt = 2^13;      % Time per cycle
 fs = Nt*f0;     % Samping frequency
 
+Ntint = Nt*upsamp;
+fsint = Ntint*f0;
+
 if fs/2 <= f2
     error('Increase sampling rate!');
 end    
+
+Pfilter = 0;
+if upsamp > 1
+    % one period is removed due to edge effect of downsampling
+    Pfilter = 1;
+end
+Pint = P + Pfilter;
 
 q0   = zeros(n,1);
 u0   = zeros(n,1);
 t1   = 0;
 t2   = P/f0;
 t    = linspace(t1, t2, Nt*P+1);  t(end) = [];   % time vector. ode45 interpolates output
+% Upsampled time vector
+tint = linspace(t1, t2, Ntint*Pint+1); tint(end) = [];
 freq = (0:Nt/2)*f0;   % frequency content
 nt   = Nt*P;
 
@@ -76,23 +89,31 @@ for r=1:R
     [fex, MS{r}] = multisine(f1, f2, N, A, [], [], r);
 
     par = struct('M',M,'C',D,'K',K,'p',p,'E',E,'fex',fex, 'amp', Fex1);
-    [tout,Y] = ode45(@(t,y) sys(t,y, par), t,[q0;u0]);
+%     [tout,Y] = ode45(@(t,y) sys(t,y, par), t,[q0;u0]);
+    Y = ode5(@(t,y) sys(t,y, par), tint, [q0;u0]);
  
-    u(:,:,r) = reshape(fex(tout'), [Nt,P]);
-    y(:,:,r,:) = reshape(Y(:,1:n), [Nt,P,n]);
-    ydot(:,:,r,:) = reshape(Y(:,n+1:end), [Nt,P,n]);
+	u(:,:,r) = reshape(fex(t'), [Nt,P]);
+    if upsamp > 1
+        ytmp = dsample(reshape(Y(:,1:n), [Ntint,Pint,1,n]), upsamp);
+        y(:,:,r,:) = ytmp;
+        ytmp = dsample(reshape(Y(:,n+1:end), [Ntint,Pint,1,n]), upsamp);
+        ydot(:,:,r,:) = ytmp;
+    else
+        y(:,:,r,:) = reshape(Y(:,1:n), [Nt,P,n]);
+        ydot(:,:,r,:) = reshape(Y(:,n+1:end), [Nt,P,n]);
+    end
 end
 disp(['ode45 with multisine in time domain required ' num2str(toc) ' s.']);
 
-save('data/ode45_multisine.mat','u','y','ydot','f1','f2','fs','freq',...
-    't','A','PHI_L2', 'MS', 'model')
+save(sprintf('data/ode45_multisine_A%d.mat',A),'u','y','ydot','f1','f2','fs','freq',...
+    't','A','PHI_L2', 'MS', 'model', 'Nt','f0')
 
 %% show time series
 r = 1;
 Y = PHI_L2*reshape(y(:,:,r,:),[],n)';
 
 figure;
-plot(tout, Y,'k-')
+plot(t, Y,'k-')
 % indicate periods
 h1 = vline(t((1:r*P)*Nt),'--g');
 % indicate realizations
