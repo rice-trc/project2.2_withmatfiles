@@ -48,7 +48,7 @@ end
 
 % Properties of the underlying linear system
 M = eye(Nmod);
-D = diag(2*Dmod(1:Nmod).*om(:));
+D = diag(2*reshape(Dmod(1:Nmod),[],1).*om(:));
 K = diag(om.^2);
 
 % Fundamental harmonic of external forcing

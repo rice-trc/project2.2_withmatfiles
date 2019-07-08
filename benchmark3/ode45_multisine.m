@@ -15,7 +15,7 @@ dataname = 'ms_full';
 savedata = true;
 savefig = true;
 
-benchmark = 1;
+benchmark = 2;
 
 %% Define system
 switch benchmark
@@ -26,8 +26,8 @@ switch benchmark
         f1 = 50;
         f2 = 405;
     case 2
-        exc_lev = [1,15,50];
-        f1 = 50;
+        exc_lev = [1,10,20];
+        f1 = 100;
         f2 = 405;
 
     case 3
@@ -45,7 +45,7 @@ R  = 5;           % Realizations. (one for validation and one for testing)
 P  = 10;           % Periods, we need to ensure steady state
 
 % upsampling factor to ensure integration accuracy.
-upsamp = 1;
+upsamp = 4;
 N  = 2e3;           % freq points
 Nt = 2^13;          % Time points per cycle
 Ntint = Nt*upsamp;  % Upsampled points per cycle
@@ -98,7 +98,7 @@ for r=1:R
 
     par = struct('M',sys.M,'C',sys.D,'K',sys.K,'p',sys.p,'E',sys.E,'fex',fex, 'amp', sys.Fex1);
 %     [tout,Y] = ode45(@(t,y) odesys(t,y, par), t,[q0;u0]);
-    Y = ode5(@(t,y) odesys(t,y, par), tint,[q0;u0]);
+    Y = ode8(@(t,y) odesys(t,y, par), tint,[q0;u0]);
  
     % no need to downsample u. Just use the downsampled time vector
     u(:,:,r) = reshape(fex(t), [Nt,P]);
@@ -116,8 +116,8 @@ end
 disp(['ode5 with multisine in time domain required ' num2str(toc) ' s.']);
 
 if savedata
-    save(sprintf('data/b%d_A%d_%s',benchmark,A,dataname),'u','y','ydot',...
-        'f1','f2','fs','freq','t','A','sys','MS','upsamp')
+    save(sprintf('data/b%d_A%d_up%d_%s',benchmark,A,upsamp,dataname),...
+        'u','y','ydot','f1','f2','fs','freq','t','A','sys','MS','upsamp')
 end
 
 % only plot if it's supported (ie if we're not running it from cli)
