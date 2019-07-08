@@ -19,6 +19,7 @@ PHI_L2 = PHI(L/2);
 fname = ['beam_New_Design_Steel_analytical_5t_' ...
     num2str(thickness*1000) 'mm.mat'];
 [p, E] = nlcoeff(fname, Nmod);
+E = 0;
 
 % Properties of the underlying linear system
 M = eye(Nmod);
@@ -71,11 +72,33 @@ for iex=1:length(exc_lev)
 end
 
 %% Compute frequency response of PNLSS identified model
-Alevel = 35;
-load(sprintf('./data/ode45_multisine_A%d.mat',Alevel), 'fs', 'PHI_L2');
-load(sprintf('./data/pnlssout_A%d.mat',Alevel),'model');
+load('./data/ode45_multisine_A25.mat', 'fs');
+load('./data/pnlssout_A25.mat','model');
+fs = 2^18;
 
-Ndpnlss = size(model.A,1);
+% Continuous time model
+ctmodel.A = [0 1;
+            -M\K -M\D];
+ctmodel.B = [0; inv(M)*Fex1];
+ctmodel.C = [PHI_L2 0];
+ctmodel.D = [0];
+ctmodel.xpowers = [3 0 0];
+ctmodel.E = [0; -M\E];
+
+ctmodel.xpowers = model.xpowers;
+ctmodel.E = [[0; -M\E] zeros(2, 9)];
+
+% Discrete time model
+dtmodel = ctmodel;
+dtmodel.A = ctmodel.A/fs+eye(2)
+dtmodel.B = ctmodel.B/fs;
+dtmodel.E = ctmodel.E/fs;
+
+dtmodel.A = expm(ctmodel.A/fs);
+dtmodel.B = inv(ctmodel.A)*(dtmodel.A-eye(2))*ctmodel.B;
+dtmodel.E = ctmodel.E/fs;
+
+Ndpnlss = size(dtmodel.A,1);
 
 % Forcing vector
 Uc = zeros(H+1,1);
@@ -90,10 +113,10 @@ Solspnlss = cell(length(exc_lev),1);
 for iex=1:length(exc_lev)
     Ff = exc_lev(iex);
 
-    Xc = (exp(1i*Om_s/fs)*eye(size(model.A))-model.A)\(model.B*Ff);             % linear solution
-    % Xc = ((1i*Om_s/fs)*eye(size(model.A))-model.A)\(model.B*Ff);             % linear solution
-    X0 = [zeros(length(model.A),1);real(Xc);-imag(Xc);....
-            zeros(2*(H-1)*length(model.A),1)];                  % initial guess
+    Xc = (exp(1i*Om_s/fs)*eye(size(dtmodel.A))-dtmodel.A)\(dtmodel.B*Ff);             % linear solution
+    % Xc = ((1i*Om_s/fs)*eye(size(dtmodel.A))-dtmodel.A)\(dtmodel.B*Ff);             % linear solution
+    X0 = [zeros(length(dtmodel.A),1);real(Xc);-imag(Xc);....
+            zeros(2*(H-1)*length(dtmodel.A),1)];                  % initial guess
     
     Dscale = [mean(abs(Xc))*ones(length(X0),1);Om_s];
     Sopt = struct('ds',ds,'dsmin',dsmin,'dsmax',dsmax,'flag',1,'stepadapt',1, ...
@@ -101,9 +124,9 @@ for iex=1:length(exc_lev)
             'Dscale',Dscale,'jac','full', 'dynamicDscale', 1);
 
     fun_residual = ...
-            @(XX) mhbm_aft_residual_pnlss_discrete(XX, model.A, model.B, model.E, model.xpowers, 1/fs, Uc*Ff, H, Ntd);
+            @(XX) mhbm_aft_residual_pnlss_discrete(XX, dtmodel.A, dtmodel.B, dtmodel.E, dtmodel.xpowers, 1/fs, Uc*Ff, H, Ntd);
     Cfun_postprocess = {@(varargin) ...
-            mhbm_post_amplitude_pnlss(varargin{:},Uc*Ff,model.C,model.D,zeros(1,length(model.E)),model.xpowers,H,Ntd)};
+            mhbm_post_amplitude_pnlss(varargin{:},Uc*Ff,dtmodel.C,dtmodel.D,zeros(1,length(dtmodel.E)),dtmodel.xpowers,H,Ntd)};
     fun_postprocess = @(Y) mhbm_postprocess(Y,fun_residual,Cfun_postprocess);
 
     [Xpnlss{iex},~,Sol] = solve_and_continue(X0, fun_residual,...
@@ -113,35 +136,36 @@ end
 
 
 %% Plot
-figure(Alevel)
+figure(1)
 clf()
 
-figure(Alevel+1)
+figure(2)
 clf()
 colos = distinguishable_colors(length(exc_lev));
 aa = gobjects(size(exc_lev));
 for iex=1:length(exc_lev)
-    figure(Alevel)
+    figure(1)
     plot(Sols{iex}(:,1)/2/pi, Sols{iex}(:,2), '-', 'Color', colos(iex,:)); hold on
     plot(Solspnlss{iex}(:,1)/2/pi, Solspnlss{iex}(:,2), '.--', 'Color', colos(iex,:))
     
-    figure(Alevel+1)
+    figure(2)
     aa(iex) = plot(Sols{iex}(:,1)/2/pi, Sols{iex}(:,3), '-', 'Color', colos(iex,:)); hold on
     plot(Solspnlss{iex}(:,1)/2/pi, Solspnlss{iex}(:,3), '.--', 'Color', colos(iex,:))
     legend(aa(iex), sprintf('F = %.2f', exc_lev(iex)));
 end
 
-figure(Alevel)
+figure(1)
+set(gca,'Yscale', 'log')
 xlim(sort([Om_s Om_e])/2/pi)
 xlabel('Forcing frequency \omega (Hz)')
 ylabel('RMS response amplitude (m)')
-savefig(sprintf('./fig/pnlssfrf_A%d_Amp.fig',Alevel))
-print(sprintf('./fig/pnlssfrf_A%d_Amp.eps',Alevel), '-depsc')
+% savefig(sprintf('./fig/pnlssfrf_A%d_Amp.fig',Alevel))
+% print(sprintf('./fig/pnlssfrf_A%d_Amp.eps',Alevel), '-depsc')
 
-figure(Alevel+1)
+figure(2)
 xlim(sort([Om_s Om_e])/2/pi)
 xlabel('Forcing frequency \omega (Hz)')
 ylabel('Response phase (degs)')
 legend(aa(1:end), 'Location', 'northeast')
-savefig(sprintf('./fig/pnlssfrf_A%d_Phase.fig',Alevel))
-print(sprintf('./fig/pnlssfrf_A%d_Phase.eps',Alevel), '-depsc')
+% savefig(sprintf('./fig/pnlssfrf_A%d_Phase.fig',Alevel))
+% print(sprintf('./fig/pnlssfrf_A%d_Phase.eps',Alevel), '-depsc')
