@@ -1,6 +1,6 @@
-function pnlss_plot(t,sig,bla,estdata,valdata,testdata,valerrs,model,savefig)
+function pnlss_plot(t,sig,bla,estdata,valdata,testdata,valerrs,model,hfig,savefig)
 
-if nargin < 9
+if nargin < 10
     savefig = false;
 end
 
@@ -9,8 +9,7 @@ if ~exist('hfig','var')
     hfig = {};
 end
 
-freq = bla.freq;
-covY = bla.covY;
+freq = bla.freq; covY = bla.covY; fs = bla.fs;
 P=sig.P; R=sig.R; Nt=sig.Nt; p=sig.p; m=sig.m;
 
 %% modal analysis
@@ -135,6 +134,17 @@ title(sprintf('Estimated BLA p: %d)',i))
 legend('BLA FRF','Noise Distortion','Total Distortion','Location','nw')
 hfig(end+1) = {{gcf, sprintf('bla_p%d',i)}};
 end
+
+%% Compare BLA with subspace model
+% GModel = fss2frf(A,B,C,D,freq(lines)/fs);
+% G = bla.G;
+% figure; hold on
+% plot(freq(lines),db(abs(GModel(:))),'b-','LineWidth',4)
+% plot(freq(lines),db(abs(G(:))),'r.')
+% plot(freq(lines),db(abs(G(:)-GModel(:))),'c.')
+% plot(freq(lines),db(abs(bla.covGML(:)),'power'),'k.')
+% legend('BLA (parametric)','BLA (nonpar)','residual','standard deviation')
+
 %% save figures
 
 if savefig
@@ -144,7 +154,7 @@ if savefig
         fname = hfig{i}{2};
         % change figure background from standard grey to white
         set(h, 'Color', 'w');
-        export_fig(h, strcat(path,fname), '-pdf', '-png');
+        export_fig(h, strcat(path,fname), '-png');
     end
     
 end

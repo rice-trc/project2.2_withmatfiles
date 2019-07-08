@@ -17,7 +17,7 @@ semilogy(KSSs','.') % Cost function of all subspace models
 hold on;
 semilogy(stabilizedSS','o','Color',[0.5 0.5 0.5]) % Encircle stabilized models in gray
 % if any KLMs are not NaN, then we did optimize
-optimize = any(~isnan(KLMs));
+optimize = sum(any(~isnan(KLMs)));
 if optimize > 0
     try
         set(gca,'ColorOrderIndex',1) % Restart from the same color as in the KSSs plot
@@ -49,9 +49,9 @@ for n = na % Plot FRFs of the best model for each model order
         C = model{3};
         D = model{4};
         GModel = fss2frf(A,B,C,D,freq/fs);
-        fPlotFrfMIMO(GModel,freq);
-        fPlotFrfMIMO(G,freq,'b.');
-        fPlotFrfMIMO(G-GModel,freq,'r.');
+        fPlotFrfMIMO(GModel,freq,'b-','LineWidth',4);
+        fPlotFrfMIMO(G,freq,'r.');
+        fPlotFrfMIMO(G-GModel,freq,'.','Color',[0.5,0.5,0.5]); % grey color
         temp = zeros(m*p,F);
         for i = 1:m*p
             temp(i,:) = covG(i,i,:);
@@ -61,7 +61,7 @@ for n = na % Plot FRFs of the best model for each model order
             temp2(:,:,f) = reshape(temp(:,f),p,m);
         end
         stdG = sqrt(temp2);
-        fPlotFrfMIMO(stdG,freq,'k--');
+        fPlotFrfMIMO(stdG,freq,'k.');
         set(gcf,'Name',['n = ' num2str(n)])
         set(gcf,'NumberTitle','off')
         

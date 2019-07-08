@@ -83,24 +83,24 @@ hfig(end+1) = {{gcf, "exfreq"}};
 % total and noise distortion averaged over P periods and R realizations
 % total distortion level includes nonlinear and noise distortion
 % G: FRF; covGML: noise + NL; covGn: noise (all only on excited lines)
-if exist('fCovarFrf','file')
-Ptr = 2;
-yest = phi*y(:,Ptr:end,:,1);
-uest = permute(u(:,Ptr:end,:,1),[1,4,3,2]); % N x m x R x P
-yest = permute(yest,[1,4,3,2]); % N x p x R x P
-U = fft(uest); U = U(lines,:,:,:); % Input spectrum at excited lines
-Y = fft(yest); Y = Y(lines,:,:,:); % Output spectrum at excited lines
-[G,covGML,covGn] = fCovarFrf(U,Y);
-
-figure;
-subplot(2,1,1); plot(freq(lines),db(abs([G(:) covGML(:) covGn(:)])));
-xlabel('Frequency (Hz)'); ylabel('Amplitude (dB)')
-legend('FRF','Total distortion','Noise distortion')
-subplot(2,1,2); plot(freq(lines),rad2deg(angle(G(:))))
-xlabel('Frequency (Hz)'); ylabel('Angle (degree)')
-
-hfig(end+1) = {{gcf, "bla"}};
-end
+% if exist('fCovarFrf','file')
+% Ptr = 2;
+% yest = phi*y(:,Ptr:end,:,1);
+% uest = permute(u(:,Ptr:end,:,1),[1,4,3,2]); % N x m x R x P
+% yest = permute(yest,[1,4,3,2]); % N x p x R x P
+% U = fft(uest); U = U(lines,:,:,:); % Input spectrum at excited lines
+% Y = fft(yest); Y = Y(lines,:,:,:); % Output spectrum at excited lines
+% [G,covGML,covGn] = fCovarFrf(U,Y);
+% 
+% figure;
+% subplot(2,1,1); plot(freq(lines),db(abs([G(:) covGML(:) covGn(:)])));
+% xlabel('Frequency (Hz)'); ylabel('Amplitude (dB)')
+% legend('FRF','Total distortion','Noise distortion')
+% subplot(2,1,2); plot(freq(lines),rad2deg(angle(G(:))))
+% xlabel('Frequency (Hz)'); ylabel('Angle (degree)')
+% 
+% hfig(end+1) = {{gcf, "bla"}};
+% end
 
 %% show detect type of nonlinearity
 

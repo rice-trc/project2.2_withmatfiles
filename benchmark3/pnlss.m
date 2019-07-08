@@ -7,8 +7,8 @@
 %  3) estimate the parameters in the full PNLSS model
 
 % close all
-clear all
-% clearvars
+clear variables
+% clearvars  % does not wotk in octave
 % clc
 
 isOctave = exist('OCTAVE_VERSION', 'builtin') ~= 0;
@@ -17,12 +17,14 @@ addpath(srcdir);
 srcdir = '../src/matlab';
 addpath(genpath(srcdir));
 
-savename = 'pnlss';
+savename = 'pnlss1';
 benchmark = 1;
-data.A = 1;
+data.A = 10;
 data.name = 'ms_full';
+% data.name = 'ode8_test';
 
-show_ms = true;
+show_ms = false;
+show_pnlss = true;
 %%
 % addnoise = true;
 addnoise = false;
@@ -48,6 +50,11 @@ if show_ms
     ms_plot(t,y,u,freq,MS{1}.lines,phi,benchmark,data.A,data.name) %savefig
 end
 
+% tmp=load(sprintf('data/b%d_A%d_%s',benchmark,data.A,data.name));
+% tmp.PHIS = PHIS;
+% tmp.sys = [];
+% save(sprintf('data/b%d_A%d_%s_modif',benchmark,data.A,data.name),'-struct','tmp')
+
 [Nt,P,R,p] = size(y);
 [Nt,P,R,m] = size(u);
 
@@ -70,6 +77,18 @@ end
 y = yres;
 p = nPHIS;
 
+figure;
+r = 1;
+per = (y(:,1:end-1,r)-y(:,end,r)) / rms(y(:,1,r));
+plot(t(1:Nt*(P-1)),db(per(:)),'k-')
+% indicate periods
+h1 = vline(t((1:r*(P-1))*Nt),'--g');
+% indicate realizations
+h2 = vline(t((1:r)*Nt*(P-1)),'--k');set([h1 h2],'LineWidth',0.5)
+xlabel('time (s)')
+ylabel('Relative error to last period (dB)')
+title([num2str(Nt) ' samples per period'])
+
 
 %% Add colored noise to the output
 if addnoise
@@ -91,7 +110,7 @@ yval = y(:,end,R-1,:); yval = reshape(yval,[],p);
 
 % All other realizations for estimation. But remember to remove transient!
 R = R-2;
-Ptr = 2;
+Ptr = 4;
 P = P-Ptr;
 uest = u(:,Ptr:end,1:R,:);
 yest = y(:,Ptr:end,1:R,:);
@@ -105,9 +124,11 @@ uStd = mean(mean(std(uest)));
 uest = permute(uest,[1,4,3,2]); % N x m x R x P
 yest = permute(yest,[1,4,3,2]); % N x p x R x P
 covY = fCovarY(yest); % Noise covariance (frequency domain)
-lines = MS{1}.lines;
+
 
 %%
+lines = MS{1}.lines;
+
 U = fft(uest); U = U(lines,:,:,:); % Input spectrum at excited lines
 Y = fft(yest); Y = Y(lines,:,:,:); % Output spectrum at excited lines
 
@@ -117,25 +138,26 @@ Y = fft(yest); Y = Y(lines,:,:,:); % Output spectrum at excited lines
 % G: FRF; covGML: noise + NL; covGn: noise (all only on excited lines)
 [G,covGML,covGn] = fCovarFrf(U,Y); 
 bla.G = G; bla.covGML = covGML; bla.covGn = covGn; bla.freq = freq;
-bla.lines = lines; bla.covY = covY;
-% figure;
-% subplot(2,1,1); plot(freq(lines),db(abs([G(:) covGML(:) covGn(:)])));
+bla.lines = lines; bla.covY = covY; bla.fs = fs;
+% figure; subplot(2,1,1); hold on; plot(freq(lines), db(abs(G(:))))
+% plot(freq(lines), db(abs([covGML(:)*R covGn(:)*R]),'power'),'.')
 % xlabel('Frequency (Hz)'); ylabel('Amplitude (dB)')
 % legend('FRF','Total distortion','Noise distortion')
 % subplot(2,1,2); plot(freq(lines),rad2deg(angle(G(:))))
 % xlabel('Frequency (Hz)'); ylabel('Angle (degree)')
 
+
 %% Estimate linear state-space model (frequency domain subspace)
 
 % Choose model order
-na   = [2];%[2,3,4];
-maxr = 20;
+na   = [2,3]; % [2,3,4]
+maxr = 10;%20;
 % Excited frequencies (normalized). -1 because lines are given wrt. fft.
 freq_norm = (lines-1)/Nt;
-
+% alternative: freq(lines)/fs
 % Uncomment for uniform weighting (= no weighting)
 % covGML = repmat(eye(1),[1 1 length(lines)]);
-[linmodels, hfig, subdata]= fLoopSubSpace(freq_norm,bla.G,bla.covGML,na,maxr,100);
+[linmodels, subspacedata, ~]= fLoopSubSpace(freq_norm,bla.G,bla.covGML,na,maxr,100);
 
 % Extract linear state-space matrices from best model on validation data
 Nval = length(uval);
@@ -158,6 +180,7 @@ for n = na
     end
 end
 % select the best model
+min_na = 2;
 model = linmodels{min_na};
 [A,B,C,D] = model{:};
 if ~isOctave
@@ -167,6 +190,12 @@ end
 n = length(A);
 fprintf('Model order selected, n: %d\n',n)
 
+% % plot subspace models
+% hfig = fPlotSubSpace(subspacedata,linmodels,bla.G,bla.covGML,freq(lines),fs,na,maxr);
+% h = hfig{1}{1};
+% title(h.CurrentAxes,'Subspace models. Stars: LM optimized')
+
+% return;
 
 %% Estimate PNLSS model
 
@@ -192,7 +221,7 @@ whichtermsx = 'statesonly';
 whichtermsy = 'empty';
 
 % Settings Levenberg-Marquardt optimization
-MaxCount = 100;
+MaxCount = 30;
 lambda = 100;
 
 % Initial linear model in PNLSS form
@@ -268,9 +297,9 @@ valdata = [yval errval_lin errval_nl];
 testdata = [ytest errtest_lin errtest_nl];
 
 sig = struct('P',P, 'R',R, 'Nt',Nt, 'p',p, 'm',m, 'fs',fs);
-save(sprintf('data/b%d_A%d_%s',benchmark,data.A,savename),...
+save(sprintf('data/b%d_A%d_%s.mat',benchmark,data.A,savename),...
     'modellinest','model','valerr','valerrs','estdata','valdata','testdata',...
-    'bla','sig','subdata')
+    'bla','sig','linmodels','subspacedata')
 
 %% Results
 
@@ -288,5 +317,5 @@ sys_phys = ss(Ap,Bp,Cp,model.D);
 
 %% plot
 if show_pnlss
-    pnlss_plot(t,sig,bla,estdata,valdata,testdata,valerrs,model,savefig)
+    pnlss_plot(t,sig,bla,estdata,valdata,testdata,valerrs,model,hfig,savefig)
 end
