@@ -72,34 +72,44 @@ for iex=1:length(exc_lev)
 end
 
 %% Compute frequency response of PNLSS identified model
-load('./data/ode45_multisine_A25.mat', 'fs');
-load('./data/pnlssout_A25.mat','model');
-fs = 2^18;
+% load('./data/ode45_multisine_A25.mat', 'fs');
+% load('./data/pnlssout_A25.mat','model');
+% ctmodel.xpowers = model.xpowers;
+% ctmodel.E = [[0; -M\E] zeros(2, 9)];
+
+fs = 2^16;
 
 % Continuous time model
 ctmodel.A = [0 1;
             -M\K -M\D];
-ctmodel.B = [0; inv(M)*Fex1];
+ctmodel.B = [0; M\Fex1];
 ctmodel.C = [PHI_L2 0];
 ctmodel.D = [0];
+% xpowers: each row gives the power of [x1, x2, u], which is then
+% multiplied with corresponding coefficient in E.
+% E ∈ [n, nx], xpowers ∈ [nx, n+1]
 ctmodel.xpowers = [3 0 0];
 ctmodel.E = [0; -M\E];
+ctmodel.F = 0;
+ctmodel.ypowers = [3 0 0];
 
-ctmodel.xpowers = model.xpowers;
-ctmodel.E = [[0; -M\E] zeros(2, 9)];
 
 % Discrete time model
+% euler discretization
 dtmodel = ctmodel;
-dtmodel.A = ctmodel.A/fs+eye(2)
+dtmodel.A = ctmodel.A/fs+eye(2);
 dtmodel.B = ctmodel.B/fs;
 dtmodel.E = ctmodel.E/fs;
 
+% analytical discretization for A,B
 dtmodel.A = expm(ctmodel.A/fs);
-dtmodel.B = inv(ctmodel.A)*(dtmodel.A-eye(2))*ctmodel.B;
+dtmodel.B = ctmodel.A\(dtmodel.A-eye(2))*ctmodel.B;
 dtmodel.E = ctmodel.E/fs;
 
-Ndpnlss = size(dtmodel.A,1);
+% matlabs build-in / for checking
+dtm = c2d(ss(ctmodel.A,ctmodel.B,ctmodel.C,ctmodel.D),1/fs);
 
+Ndpnlss = size(dtmodel.A,1);
 % Forcing vector
 Uc = zeros(H+1,1);
 Uc(2) = 1;
@@ -126,7 +136,7 @@ for iex=1:length(exc_lev)
     fun_residual = ...
             @(XX) mhbm_aft_residual_pnlss_discrete(XX, dtmodel.A, dtmodel.B, dtmodel.E, dtmodel.xpowers, 1/fs, Uc*Ff, H, Ntd);
     Cfun_postprocess = {@(varargin) ...
-            mhbm_post_amplitude_pnlss(varargin{:},Uc*Ff,dtmodel.C,dtmodel.D,zeros(1,length(dtmodel.E)),dtmodel.xpowers,H,Ntd)};
+            mhbm_post_amplitude_pnlss(varargin{:},Uc*Ff,dtmodel.C,dtmodel.D,dtmodel.F,dtmodel.ypowers,H,Ntd)};
     fun_postprocess = @(Y) mhbm_postprocess(Y,fun_residual,Cfun_postprocess);
 
     [Xpnlss{iex},~,Sol] = solve_and_continue(X0, fun_residual,...
