@@ -18,7 +18,17 @@
 \section{pnlss}
 \label{sec:generate-data}
 
-\begin{frame}{Generate data/avoid variable time step solvers}
+\begin{frame}<1>[label=pnlss]
+  \begin{center}
+    \visible<1>{Steps taken so far with PNLSS modeling}
+  \end{center}
+  \alert<1>{Generate data} \newline
+  \alert<2>{Consistency} \newline
+  \alert<3>{Nonparametric analysis} \newline
+  \alert<4>{Parametric modeling}
+\end{frame}
+
+\begin{frame}{Avoid variable time step solvers}
   \begin{columns}
     \begin{column}{0.5\textwidth}
       To ensure periodicity, a fixed time step integrator is used
@@ -53,7 +63,7 @@
 \end{frame}
 
 
-\begin{frame}{Generate data/correct integration}
+\begin{frame}{Increase sampling frequency}
   \begin{columns}
     \begin{column}{0.5\textwidth}
       % \begingroup \small% \small in 11pt base font is 10pt
@@ -82,7 +92,26 @@
 \end{frame}
 
 
-\begin{frame}{Consistency of PNLSS model/discrete model}
+\begin{frame}{Use RK8 - maybe}
+  RK8 with fixed time step.
+  \begin{itemize}
+  \item RK8 steady state is reached after 3 periods. High $A$.
+  \item RK5 with upsamp: SS after 4 periods (previous slide). High $A$.
+  \item Not clear why different
+  \item But BLA(angle) is not estimated properly for RK8 data. Low $A$\\
+    Upper: RK8; lower: RK5
+  \item ... but estimated PNLSS models are similar.
+  \end{itemize}
+  \begin{center}
+    \includegraphics[width=0.45\textwidth]{fig/b1_A30_ode8_periodicity}
+    \includegraphics[width=0.45\textwidth]{fig/angle_rk8_rk5}
+ \end{center}
+\end{frame}
+
+\againframe<2>{pnlss}
+
+
+\begin{frame}{Discrete model}
   The EOM for the duffing oscillator in benchmark1 can be written as
   % see JJT p 115
   \begin{equation}
@@ -206,9 +235,7 @@
 \end{frame}
 
 
-\begin{frame}{PNLSS output}
-  a
-\end{frame}
+\againframe<3>{pnlss}
 
 
 \begin{frame}{Characterization of nonlinearity}
@@ -236,7 +263,119 @@
 \end{frame}
 
 
+\begin{frame}{Estimating distortion levels}
+  \begin{columns}
+    \begin{column}{0.5\textwidth}
+      Use full multisine. Average over periods and realizations to estimate noise
+      and nonlinear distortion $\rightarrow$ is NL-model necessary?\\
+
+      \includegraphics[width=0.99\textwidth]{fig/bla_nldistort}
+
+      \vspace*{5mm}
+
+      \includegraphics[width=0.99\textwidth]{fig/ms_nldistort}
+    \end{column}
+    \begin{column}{0.5\textwidth}
+      \vspace{-5mm}
+
+      Increasing NL distortion with increasing A
+      \vspace{-1mm}
+      \begin{center}
+        upper: $A=1$; lower $A=30$\\
+        \includegraphics[width=0.75\textwidth]{fig/b1_A1_ms_full_bla}
+        \includegraphics[width=0.75\textwidth]{fig/b1_A30_ms_full_bla}
+      \end{center}
+    \end{column}
+  \end{columns}
+  \tiny{Note: dB for power: $L_p=10\log_{10}(P)$. dB for field quantity:
+    $L_F=10\log_{10}(F^2)$. Thus when comparing distortion(variance,
+    proportional to power) with $|G|$, do either (matlab pseudo-syntax)
+    (Also remember to multiply distortion with number of realizations):\\
+    \texttt{plot(freq,[db(abs(G)), db(var*R,'power')])} or
+    \texttt{plot(freq,[db(abs(G)), db(sqrt(var*R))])}}.
+\end{frame}
+
+
+\againframe<4>{pnlss}
+
+
+\begin{frame}{Subspace model}
+  \begin{itemize}
+  \item Linear model of good quality\\
+    Model error and standard deviation of BLA coincides
+  \item Error seems to increase around 400 Hz.\\
+    First thought: Maybe a second order discrete model is insufficient to model
+    the continuous system. But third order shows same behavior
+  \end{itemize}
+  \begin{center}
+    left: BLA and subspace($n=2$); right: cost function for different subspace
+    models
+    \includegraphics[width=0.45\textwidth]{fig/b1_A10_ms_full_subspace_n2}
+    \includegraphics[width=0.45\textwidth]{fig/b1_A10_ms_full_sub_cost}
+  \end{center}
+\end{frame}
+
+
+\begin{frame}{Full optimized model}
+  \begin{itemize}
+  \item Linear error significant around resonance(larger amplitudes)
+  \item PNLSS RMS error decreased 3 orders of magnitude
+  \item Not much difference in $\omega_0$ or $\zeta$.
+  \item For fully correct model, pnlss error should be equal to noise floor (no
+    noise, ie. error should be as low as integration precision).\\
+    Here: 80 dB $\rightarrow$ $10^{-4}$.
+  \end{itemize}
+
+  \begin{center}
+  \begin{tabular}{l|r|r|r}
+    & $\omega_0$ Hz & $\zeta$ \% & \small{RMS error (new data)}\\
+    \hline
+    duffing & 264.72 & 0.38 &\\
+    linear & 265.76 & 0.37  & 1.64$\cdot 10^{-5}$ \\
+    pnlss & 264.72 & 0.38 & 7.46$\cdot 10^{-8}$
+  \end{tabular}
+  \vspace{2mm}
+
+    left: convergence; right: Error on new data\\
+    \includegraphics[width=0.45\textwidth]{fig/b1_A10_ms_full_convergence}
+    \includegraphics[width=0.45\textwidth]{fig/b1_A10_ms_full_val_err_p1}
+  \end{center}
+\end{frame}
+
+
+\begin{frame}[fragile]{Noise}
+  \begin{itemize}
+  \item SNR?
+  \item Type/color?
+  \end{itemize}
+
+  \begin{lstlisting}
+    noise = 1e-3*std(y(:,end,end))*randn(size(y));
+    % Do some filtering
+    noise(1:end-1,:,:) = noise(1:end-1,:,:) + noise(2:end,:,:);
+  \end{lstlisting}
+  \begin{center}
+  \includegraphics[width=0.55\textwidth]{fig/noise}
+\end{center}
+\end{frame}
+
+
+% e_est_lin:	 1.860e-05	 e_est_nl:	 7.570e-08
+% e_val_lin:	 1.639e-05	 e_val_nl:	 7.465e-08
+% e_test_lin:	 1.530e-05	 e_test_nl:	 4.152e-06
+
+% Nat freq 264.72, 264.72,  Hz.
+% damping 0.003798
+
+% 264.7179
+
+
+% Identified Modal Parameters
+% Nat freq 265.76, 265.76,  Hz.
+% damping 0.0037382, 0.0037382,
+
 \end{document}
+
 %%% Local Variables:
 %%% mode: latex
 %%% coding: utf-8-unix
