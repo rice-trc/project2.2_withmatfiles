@@ -21,7 +21,7 @@ savename = 'pnlss1';
 benchmark = 1;
 data.A = 10;
 data.name = 'ms_full';
-% data.name = 'ode8_test';
+data.name = 'ode8_test';
 
 show_ms = false;
 show_pnlss = true;
@@ -94,9 +94,18 @@ title([num2str(Nt) ' samples per period'])
 if addnoise
     rng(10);
     noise = 1e-3*std(y(:,end,end))*randn(size(y)); % Output noise signal
+    noise1 = noise;
     % Do some filtering
     noise(1:end-1,:,:) = noise(1:end-1,:,:) + noise(2:end,:,:);
     y = y + noise;
+    
+    dft1 = fft(noise1(:,1,1)); dft2 = fft(noise(:,1,1));
+    figure; hold on
+    plot(abs(dft1(1:end/2)),'-k');
+    plot(abs(dft2(1:end/2)),'Color',[0 0 1 0.3])
+    ylabel('Magnitude (dB)')
+    xlabel('Frequency line')
+    legend('Flat spectrum','filtered')
 end
 
 %% Separate the data in estimation, validation, and test set
@@ -190,10 +199,10 @@ end
 n = length(A);
 fprintf('Model order selected, n: %d\n',n)
 
-% % plot subspace models
-% hfig = fPlotSubSpace(subspacedata,linmodels,bla.G,bla.covGML,freq(lines),fs,na,maxr);
-% h = hfig{1}{1};
-% title(h.CurrentAxes,'Subspace models. Stars: LM optimized')
+% plot subspace models
+hfig = fPlotSubSpace(subspacedata,linmodels,bla.G,bla.covGML,freq(lines),fs,na,maxr);
+h = hfig{1}{1};
+title(h.CurrentAxes,'Subspace models. Stars: LM optimized')
 
 % return;
 
@@ -297,7 +306,7 @@ valdata = [yval errval_lin errval_nl];
 testdata = [ytest errtest_lin errtest_nl];
 
 sig = struct('P',P, 'R',R, 'Nt',Nt, 'p',p, 'm',m, 'fs',fs);
-save(sprintf('data/b%d_A%d_%s.mat',benchmark,data.A,savename),...
+save(sprintf('data/b%d_A%d_%s_%s.mat',benchmark,data.A,data.name,savename),...
     'modellinest','model','valerr','valerrs','estdata','valdata','testdata',...
     'bla','sig','linmodels','subspacedata')
 
@@ -311,11 +320,20 @@ zeta = sprintf('%0.5g, ', sd.zeta);
 disp('Identified Modal Parameters')
 fprintf('Nat freq %s Hz. \ndamping %s\n',wn,zeta)
 
+% subspace model
+sys_ct_sub = d2c(ss(modellinest.A,modellinest.B,modellinest.C,modellinest.D,1/sig.fs));
+sd = modal(sys_ct_sub.A,sys_ct_sub.C);
+wn = sprintf('%0.5g, ', sd.wn);
+zeta = sprintf('%0.5g, ', sd.zeta);
+disp('Identified Modal Parameters')
+fprintf('Nat freq %s Hz. \ndamping %s\n',wn,zeta)
+
 % similarity transform to get state space matrices in physical coordinates
 [Ap,Bp,Cp,T] = ss2phys(sys_ct.A,sys_ct.B,sys_ct.C);
 sys_phys = ss(Ap,Bp,Cp,model.D);
 
 %% plot
 if show_pnlss
-    pnlss_plot(t,sig,bla,estdata,valdata,testdata,valerrs,model,hfig,savefig)
+    figname = sprintf('b%d_A%d_%s',benchmark,data.A,data.name );
+    pnlss_plot(t,sig,bla,estdata,valdata,testdata,valerrs,model,hfig,savefig,figname)
 end

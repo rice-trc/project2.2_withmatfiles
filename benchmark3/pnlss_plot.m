@@ -1,7 +1,10 @@
-function pnlss_plot(t,sig,bla,estdata,valdata,testdata,valerrs,model,hfig,savefig)
+function pnlss_plot(t,sig,bla,estdata,valdata,testdata,valerrs,model,hfig,savefig,figname)
 
 if nargin < 10
     savefig = false;
+end
+if nargin < 11
+    figname = '';
 end
 
 % handle to figs. For saving plot
@@ -148,13 +151,15 @@ end
 %% save figures
 
 if savefig
-    path = './fig/';
+    if ~isempty(figname)
+        figname = strcat(figname,'_');
+    end
     for i=1:length(hfig)
         h = hfig{i}{1};
         fname = hfig{i}{2};
         % change figure background from standard grey to white
         set(h, 'Color', 'w');
-        export_fig(h, strcat(path,fname), '-png');
+        export_fig(h, sprintf('./fig/%s%s',figname,fname), '-png');
     end
     
 end

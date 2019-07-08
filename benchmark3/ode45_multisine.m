@@ -6,7 +6,7 @@
 
 
 % close all
-clear all
+clear variables
 
 srcdir = '../src/matlab';
 addpath(genpath(srcdir));
@@ -44,14 +44,8 @@ n = sys.Nmod;
 R  = 5;           % Realizations. (one for validation and one for testing)
 P  = 10;           % Periods, we need to ensure steady state
 
-% select Nt satisfying fs as 80% of Nyquist freq. Does not work yet.
-% f0 = 0.1;
-% N  = ceil((f2-f1)/f0);      % freq points
-% Nt = ceil(1/0.8 * f2*2/f0); % Time points per cycle
-% fs = Nt*f0;                 % Samping frequency - implicit given
-
 % upsampling factor to ensure integration accuracy.
-upsamp = 20;
+upsamp = 1;
 N  = 2e3;           % freq points
 Nt = 2^13;          % Time points per cycle
 Ntint = Nt*upsamp;  % Upsampled points per cycle
@@ -89,7 +83,7 @@ nt = length(t);          % total number of points
 fprintf(['running ms benchmark:%d. R:%d, P:%d, Nt_int:%d, fs_int:%g, ',...
     ' f0:%g, upsamp:%d\n'],benchmark,R,P,Ntint,fsint,f0,upsamp);
 for A = exc_lev
-    
+fprintf('##### A: %g\n',A);
 u = zeros(Nt,P,R);
 y = zeros(Nt,P,R,n);
 ydot = zeros(Nt,P,R,n);
@@ -98,6 +92,7 @@ MS = cell(R, 1);
 
 tic
 for r=1:R
+    fprintf('R: %d\n',r);
     % multisine force signal
     [fex, MS{r}] = multisine(f1, f2, N, A, [], [], r);
 
