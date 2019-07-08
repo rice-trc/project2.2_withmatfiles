@@ -254,7 +254,7 @@ while Count < MaxCount
     K = K_old; % Initial value of the cost function (=> unsuccessful step)
     [U,S,V] = svd(J,0); % Singular value decomposition of the Jacobian
     clear J;
-    pack; % Consolidate workspace memory
+    % pack; % Consolidate workspace memory
 
     if isnan(K)
         break % Stop nonlinear optimization (typically when initial model is unstable)
@@ -317,7 +317,7 @@ while Count < MaxCount
                 lambda = S(1,1); % Initial Levenberg-Marquardt parameter = dominant singular value
             else
                 lambda = lambda*sqrt(10); % Lean more towards gradient descent method (converges in larger range)
-            end;
+            end
         elseif isnan(K) % Typically if model is unstable
             lambda = lambda*sqrt(10); % Lean more towards gradient descent method (converges in larger range)
         else % Step was succesful
@@ -358,7 +358,7 @@ while Count < MaxCount
             model.Cost = K; % Save the obtained cost
             models = [models,model]; % Collect models after successful step
         end
-        pack; % Consolidate workspace memory
+        % pack; % Consolidate workspace memory
         model = model_new; % u_val saved in final model (best on estimation data), cost not saved
         states = states_new; %#ok States of the model used in analytical calculation of the Jacobian
         A = model.A; %#ok State matrix used in analytical calculation Jacobian
