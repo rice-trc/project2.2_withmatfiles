@@ -25,11 +25,21 @@ switch benchmark
         % low/high freq
         f1 = 50;
         f2 = 405;
+        N = 2e3;      % freq points, gives freq resolution
+        Nt = 2^12;    % Time points per cycle
+        upsamp = 4;   % upsampling factor to ensure integration accuracy.
     case 2
-        exc_lev = [1,10,20];
+        exc_lev = [1,10,20,30];
+        % natural freq (hz): ~ 264.7, 729.7, 1430.5, 2364.7, 3532.5
+        % 2/4 mode not seen.
         f1 = 100;
         f2 = 405;
-
+        % for mdof system, we need to increase time points to avoid
+        % exploding sol, when doing fixed dt integration.(ie. higher fs)
+        % higher fs is obtained by decreasing N or increasing Nt.
+        N = 2e3;
+        Nt = 1e4;
+        upsamp = 8;
     case 3
         exc_lev = [1,15,50];
         f1 = 50;
@@ -41,13 +51,9 @@ n = sys.Nmod;
 
 %% multisine, using time domain formulation
 
-R  = 5;           % Realizations. (one for validation and one for testing)
+R  = 5;            % Realizations. (one for validation and one for testing)
 P  = 10;           % Periods, we need to ensure steady state
 
-% upsampling factor to ensure integration accuracy.
-upsamp = 4;
-N  = 2e3;           % freq points
-Nt = 2^13;          % Time points per cycle
 Ntint = Nt*upsamp;  % Upsampled points per cycle
 f0 = (f2-f1)/N;     % frequency resolution -> smaller -> better
 fs = Nt*f0;         % downsampled Sampling frequency
@@ -112,6 +118,10 @@ for r=1:R
         y(:,:,r,:) = reshape(Y(:,1:n), [Nt,P,n]);
         ydot(:,:,r,:) = reshape(Y(:,n+1:end), [Nt,P,n]);
     end
+    if sum(any(isnan(y))) || sum(any(isnan(ydot)))
+        fprintf('Error: simulation exploded. Try increase fs\n')
+        break % don't quit, we still want to save data.
+    end
 end
 disp(['ode5 with multisine in time domain required ' num2str(toc) ' s.']);
 
@@ -128,4 +138,29 @@ if usejava('jvm') && feature('ShowFigureWindows')
     ms_plot(t,y,u,freq,MS{r}.lines,phi,benchmark,A,dataname,savefig)
 end
 
+
+%% Check the spectrum match between downsampled and original data 
+
+% % plot center deflection
+% phi = sys.PHI(sys.L/2);
+% Y1 = fft(phi*Y(1:Ntint,1:n)')/(Ntint);
+% Y2 = fft(phi*squeeze(y(1:Nt,1,1,:))')/(Nt);
+% % n = 5;  % node to plot
+% % Y1 = fft(Y(1:Ntint,n))/(Ntint);
+% % Y2 = fft(y(1:Nt,1,1,n))/(Nt);
+% freq = (0:Nt-1)/Nt*fs;
+% nft1 = length(Y1)/2;
+% nft2 = length(Y2)/2;
+% freq1= (0:Ntint-1)/Ntint*fsint; 
+% freq2= (0:Nt-1)/Nt*fs; 
+% figure(3)
+% clf
+% hold on
+% plot(freq1(1:nft1), db(abs(Y1(1:nft1))))
+% plot(freq2(1:nft2), db(abs(Y2(1:nft2))))
+% legend('Original','Downsampled')
+% xlabel('Frequency (Hz)')
+% ylabel('Magnitude (dB)')
+% % export_fig(gcf,sprintf('fig/b%d_fft_comp_n%d',benchmark,n),'-png')
+% export_fig(gcf,sprintf('fig/b%d_fft_comp',benchmark),'-png')
 end
