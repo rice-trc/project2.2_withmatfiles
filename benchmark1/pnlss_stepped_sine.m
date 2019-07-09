@@ -69,16 +69,17 @@ model.ypowers = dtmodel.ypowers;
 dir = 1; % or -1
 
 % We see each increment in frequency as a new realization.
-Om_vec = linspace(Om_s, Om_e, 50);  % Vector of excited frequencies
+Om_vec =linspace(Om_s, Om_e, 50)/2/pi;%  [200 264 260.7 300]; %linspace(Om_s, Om_e, 50)/2/pi;  % Vector of excited frequencies
+Om_vec =linspace(200,350,25);
 if dir == -1
     Om_vec = fliplr(Om_vec);
 end
 R = length(Om_vec);
-P = 10;
+P = 20;
 Nt = 2^12;                          % points per period
 t = zeros(length(Om_vec), Nt*P+1);  % end time depends on forcing freq
 for i = 1:length(Om_vec)
-    t(i,:) = linspace(0, P*2*pi/Om_vec(i), Nt*P+1);
+    t(i,:) = linspace(0, P/Om_vec(i), Nt*P+1);  % If Om (rad/s), multiply end time by 2*pi
 end
 t(:,end) = [];
 
@@ -87,26 +88,42 @@ NTrans = 10*Nt;  % Add 10 periods before the start
 % Number of transient samples and starting indices of each realization
 T1 = [NTrans 1+(0:Nt*P:(R-1)*Nt*P)]; 
 model.T1 = T1;
+model.T1 = NTrans;
 
 % amplitudes to loop over
-Avec = [10,40,80,100];
+Avec = 80; %[10,40,80,100];
 a_max = zeros(length(Om_vec),length(Avec));
 j = 1;
 for A = Avec
-    u = A*sin(Om_vec(:).*t);
-    u = reshape(u',[],1); % Nt*P*R x m
-    
-    y = fFilterNLSS(model,u); % Modeled output signal
+%     u = A*sin(2*pi*Om_vec(:).*t);  % R x Nt*P
+%     u = reshape(u',1,[]); % Nt*P*R x m
+%     
+%     y = fFilterNLSS(model,u); % Modeled output signal
     
     % calculate max amplitude
-    yper = reshape(y, [Nt*P,R]);
+%     yper = reshape(y, [Nt*P,R]);
     
     % take amplitude as max-min over last 5 periods
-    nper = 5;
+    nper = 2;
+    X0 = zeros(length(model.A),1);
+    y = zeros(Nt*P,length(Om_vec));
     for i = 1:length(Om_vec)
-        ymax = max(yper(end-nper*Nt-1:end,i));
-        ymin = min(yper(end-nper*Nt-1:end,i));
+        Om = Om_vec(i);
+        Ptrans = 150;
+        T = linspace(0, (P+Ptrans)/Om, Nt*(P+Ptrans)+1); T(end) = [];
+        fs = Nt*Om;
+        u = A*sin(2*pi*Om*T);
+
+        [Y, ~, X] = lsim(c2d(ss(ctmodel.A,ctmodel.B,ctmodel.C,ctmodel.D),1/fs),u,[],X0);
+%         [y, ~, X] = lsim(ss(ctmodel.A,ctmodel.B,ctmodel.C,ctmodel.D),u,T,X0);
+%         [y, ~, X] = lsim(ss(model.A,model.B,model.C,model.D,1/fs),u,[],X0);
+%         [y, X] = fFilterNLSS(model,u,X0); % Modeled output signal
+        X0 = X(end,:);
+        Y = Y(Ptrans*Nt+1:end);
+        ymax = max(Y(end-nper*Nt-1:end));
+        ymin = min(Y(end-nper*Nt-1:end));
         a_max(i,j) = abs(0.5*(ymax-ymin));
+        y(:,i) = Y;
     end
     j = j+1;
     fprintf('A: %g\n',A)
@@ -119,10 +136,11 @@ save(sprintf('data/stepped_sweep_dir%d',dir),'Om_vec','a_max')
 figure
 hold on
 for i = 1:length(Avec)
-    plot(Om_vec/2/pi, a_max(:,i), 'x')
+    plot(Om_vec, a_max(:,i), 'x')
 end
 xlabel('Frequency (Hz)')
 ylabel('Max amplitude (m)')
+
 
 %% Plot time signal
 y1 = reshape(y, [Nt*P,R]);
