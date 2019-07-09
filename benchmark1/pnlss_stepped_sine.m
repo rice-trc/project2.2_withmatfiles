@@ -2,7 +2,7 @@ clc
 clear variables
 
 addpath('../src/pnlss');
-
+addpath('../src/matlab');
 %% Define system
 
 % Fundamental parameters
@@ -64,13 +64,15 @@ model.E = dtmodel.E;
 model.F = dtmodel.F;
 model.xpowers = dtmodel.xpowers;
 model.ypowers = dtmodel.ypowers;
-%% simualte model -- From here is new!
+
+%% simulate model -- From here is new!
 % direction to sweep
 dir = 1; % or -1
 
 % We see each increment in frequency as a new realization.
 Om_vec =linspace(Om_s, Om_e, 50)/2/pi;%  [200 264 260.7 300]; %linspace(Om_s, Om_e, 50)/2/pi;  % Vector of excited frequencies
-Om_vec =linspace(200,350,25);
+Om_vec = linspace(200,350,25);
+Om_vec = [linspace(200, 260, 10) linspace(260, 270, 20) linspace(270, 350, 10)];
 if dir == -1
     Om_vec = fliplr(Om_vec);
 end
@@ -92,7 +94,10 @@ model.T1 = NTrans;
 
 % amplitudes to loop over
 Avec = 80; %[10,40,80,100];
+Avec = [10 40 80 100];
 a_max = zeros(length(Om_vec),length(Avec));
+a_rms = zeros(length(Om_vec),length(Avec));
+ph_rs = zeros(length(Om_vec),length(Avec));
 j = 1;
 for A = Avec
 %     u = A*sin(2*pi*Om_vec(:).*t);  % R x Nt*P
@@ -120,9 +125,18 @@ for A = Avec
 %         [y, X] = fFilterNLSS(model,u,X0); % Modeled output signal
         X0 = X(end,:);
         Y = Y(Ptrans*Nt+1:end);
+        U = u(Ptrans*Nt+1:end)';
         ymax = max(Y(end-nper*Nt-1:end));
         ymin = min(Y(end-nper*Nt-1:end));
         a_max(i,j) = abs(0.5*(ymax-ymin));
+
+        % FFT on last period
+        yf = fft(Y(end-Nt+1:end))/(Nt/2);  yf(1) = yf(1)/2;
+        uf = fft(U(end-Nt+1:end))/(Nt/2);  uf(1) = uf(1)/2;
+        
+%         a_rms(i,j) = sqrt(sum(Y.^2)/fs*Om/P);  % trapezoidal integration; inaccurate        
+        a_rms(i,j) = sqrt(yf(1)^2 + 0.5*vecnorm(yf(2:Nt/2)).^2);  % might as well use freq dom.
+        ph_rs(i,j) = rad2deg(angle(yf(2)/uf(2)));
         y(:,i) = Y;
     end
     j = j+1;
@@ -132,13 +146,31 @@ end
 save(sprintf('data/stepped_sweep_dir%d',dir),'Om_vec','a_max')
 
 
-%% plot max amplitudes -- poor mans frf
+% %% plot max amplitudes -- poor mans frf
+% figure
+% hold on
+% for i = 1:length(Avec)
+%     plot(Om_vec, a_max(:,i), 'x')
+% end
+% xlabel('Frequency (Hz)')
+% ylabel('Max amplitude (m)')
+
+%% plot rms amplitudes -- rich mans frf
 figure
 hold on
 for i = 1:length(Avec)
-    plot(Om_vec, a_max(:,i), 'x')
+    plot(Om_vec, a_rms(:,i), 'x-')
 end
 xlabel('Frequency (Hz)')
+ylabel('RMS amplitude (m)')
+
+%% plot phases
+figure
+hold on
+for i = 1:length(Avec)
+    plot(Om_vec, ph_rs(:,i), 'x-')
+end
+xlabel('Response relative phase (degs)')
 ylabel('Max amplitude (m)')
 
 

@@ -4,6 +4,7 @@ function [R,dR_dXOm,dR_dX,dR_dOm,Fnlc,Xc,Om] = ...
     
     X = XO(1:end-1);
     Om = XO(end);
+    
     %% Real-to-complex conversion
     nx = size(At,2);
     i0 = 1:nx;
@@ -14,9 +15,11 @@ function [R,dR_dXOm,dR_dX,dR_dOm,Fnlc,Xc,Om] = ...
     dXc_dX = [EYE(i0,:);EYE(icos,:)-1i*EYE(isin,:)];
     dXc_dOm = zeros(size(Xc,1),1);
     dXc = [dXc_dX dXc_dOm];
+    
     %% Calculation of the nonlinear forces and the Jacobian
     [Fnlc,dFnlc] = mhbm_pnlss_aft(Xc,dXc,pp,Et,Uc,Nh,Ntd);
     dFnlc_dX = dFnlc(:,1:end-1); dFnlc_dOm = dFnlc(:,end);
+    
     %% Assembly of the residual and the Jacobian
 
     % Frequency domain derivative matrix and its derivative w.r.t. Om

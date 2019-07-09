@@ -37,13 +37,13 @@ n = oscillator.n;
 
 %% Frequency response of original system using HBM
 analysis = 'FRF';
-H = 7;              % harmonic order
+H = 1;              % harmonic order
 N=2*3*H+1;
-Ntd = 1e3;
+Ntd = 2^6;
 
 % Analysis parameters
 Om_s = 200*2*pi;      % start frequency
-Om_e = 700*2*pi;     % end frequency
+Om_e = 350*2*pi;     % end frequency
 
 % Excitation levels
 exc_lev = [10 40 60 80 100];
@@ -77,7 +77,7 @@ end
 % ctmodel.xpowers = model.xpowers;
 % ctmodel.E = [[0; -M\E] zeros(2, 9)];
 
-fs = 2^16;
+fs = 2^18;
 
 % Continuous time model
 ctmodel.A = [0 1;
@@ -102,9 +102,9 @@ dtmodel.B = ctmodel.B/fs;
 dtmodel.E = ctmodel.E/fs;
 
 % analytical discretization for A,B
-dtmodel.A = expm(ctmodel.A/fs);
-dtmodel.B = ctmodel.A\(dtmodel.A-eye(2))*ctmodel.B;
-dtmodel.E = ctmodel.E/fs;
+% dtmodel.A = expm(ctmodel.A/fs);
+% dtmodel.B = ctmodel.A\(dtmodel.A-eye(2))*ctmodel.B;
+% dtmodel.E = ctmodel.E/fs;
 
 % matlabs build-in / for checking
 dtm = c2d(ss(ctmodel.A,ctmodel.B,ctmodel.C,ctmodel.D),1/fs);
@@ -118,17 +118,20 @@ ds = 1*2*pi;
 dsmin = 0.001*2*pi;
 dsmax = 50*2*pi;
 
+Wstart = Om_e;
+Wend   = Om_s;
+
 Xpnlss = cell(length(exc_lev),1);
 Solspnlss = cell(length(exc_lev),1);
 for iex=1:length(exc_lev)
     Ff = exc_lev(iex);
 
-    Xc = (exp(1i*Om_s/fs)*eye(size(dtmodel.A))-dtmodel.A)\(dtmodel.B*Ff);             % linear solution
-    % Xc = ((1i*Om_s/fs)*eye(size(dtmodel.A))-dtmodel.A)\(dtmodel.B*Ff);             % linear solution
+    Xc = (exp(1i*Wstart/fs)*eye(size(dtmodel.A))-dtmodel.A)\(dtmodel.B*Ff);             % linear solution
+    % Xc = ((1i*Wstart/fs)*eye(size(dtmodel.A))-dtmodel.A)\(dtmodel.B*Ff);             % linear solution
     X0 = [zeros(length(dtmodel.A),1);real(Xc);-imag(Xc);....
             zeros(2*(H-1)*length(dtmodel.A),1)];                  % initial guess
     
-    Dscale = [mean(abs(Xc))*ones(length(X0),1);Om_s];
+    Dscale = [mean(abs(Xc))*ones(length(X0),1);Wstart];
     Sopt = struct('ds',ds,'dsmin',dsmin,'dsmax',dsmax,'flag',1,'stepadapt',1, ...
             'predictor','tangent','parametrization','arc_length', ...
             'Dscale',Dscale,'jac','full', 'dynamicDscale', 1);
@@ -140,39 +143,42 @@ for iex=1:length(exc_lev)
     fun_postprocess = @(Y) mhbm_postprocess(Y,fun_residual,Cfun_postprocess);
 
     [Xpnlss{iex},~,Sol] = solve_and_continue(X0, fun_residual,...
-        Om_s, Om_e, ds, Sopt, fun_postprocess);
+        Wstart, Wend, ds, Sopt, fun_postprocess);
     Solspnlss{iex} = [Xpnlss{iex}(end,:)' [Sol.Apv]' [Sol.Aph1]'];
 end
 
 
 %% Plot
-figure(1)
+fg1 = 10;
+fg2 = 2;
+
+figure(fg1)
 clf()
 
-figure(2)
+figure(fg2)
 clf()
 colos = distinguishable_colors(length(exc_lev));
 aa = gobjects(size(exc_lev));
 for iex=1:length(exc_lev)
-    figure(1)
+    figure(fg1)
     plot(Sols{iex}(:,1)/2/pi, Sols{iex}(:,2), '-', 'Color', colos(iex,:)); hold on
     plot(Solspnlss{iex}(:,1)/2/pi, Solspnlss{iex}(:,2), '.--', 'Color', colos(iex,:))
     
-    figure(2)
+    figure(fg2)
     aa(iex) = plot(Sols{iex}(:,1)/2/pi, Sols{iex}(:,3), '-', 'Color', colos(iex,:)); hold on
     plot(Solspnlss{iex}(:,1)/2/pi, Solspnlss{iex}(:,3), '.--', 'Color', colos(iex,:))
     legend(aa(iex), sprintf('F = %.2f', exc_lev(iex)));
 end
 
-figure(1)
-set(gca,'Yscale', 'log')
+figure(fg1)
+set(gca,'Yscale', 'linear')
 xlim(sort([Om_s Om_e])/2/pi)
 xlabel('Forcing frequency \omega (Hz)')
 ylabel('RMS response amplitude (m)')
 % savefig(sprintf('./fig/pnlssfrf_A%d_Amp.fig',Alevel))
 % print(sprintf('./fig/pnlssfrf_A%d_Amp.eps',Alevel), '-depsc')
 
-figure(2)
+figure(fg2)
 xlim(sort([Om_s Om_e])/2/pi)
 xlabel('Forcing frequency \omega (Hz)')
 ylabel('Response phase (degs)')

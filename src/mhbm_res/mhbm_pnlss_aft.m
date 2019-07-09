@@ -13,6 +13,7 @@ function [FnlcOUT,dFnlcOUT] = mhbm_pnlss_aft(XcIN,dXcIN,pp,Et,Uc,Nh,Ntd)
     Uc = [Uc(1); Uc(2:end)/2; zeros(Ntd-Nh-1,1)];
     Uc(end-Nh+1:end,:) = flipud(conj(Uc(2:Nh+1,:)));
     u_tau = ifft(Uc)*Ntd;
+    
     %% Evaluate nonlinear terms and apply DFT
     z_tau = prod(kron([x_tau u_tau],ones(size(pp,1),1)).^repmat(pp,Ntd,1),2);
     nz = size(Et,2);
@@ -20,6 +21,7 @@ function [FnlcOUT,dFnlcOUT] = mhbm_pnlss_aft(XcIN,dXcIN,pp,Et,Uc,Nh,Ntd)
     Xtmp = fft(f_tau(end-Ntd+1:end,:))/Ntd;
     Xtmp = [Xtmp(1,:);Xtmp(2:Nh+1,:)*2];
     FnlcOUT = reshape(transpose(Xtmp),[],1);
+    
     %% Evaluate gradients of nonlinear terms and apply DFT
     dFnlcOUT = 0*dXcIN;
     for l=1:nx
