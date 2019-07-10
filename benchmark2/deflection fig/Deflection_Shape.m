@@ -1,11 +1,9 @@
 clear; clc;
 close all; 
-
-srcpath = '../src/nlvib';
+srcpath = '../../src/nlvib';
 addpath(genpath(srcpath));
 srcpath = '../';
 addpath(genpath(srcpath));
-
 set(0,'defaultAxesTickLabelInterpreter', 'default');
 set(0,'defaultTextInterpreter','latex'); 
 set(0, 'DefaultLegendInterpreter', 'latex'); 
@@ -13,8 +11,8 @@ set(0, 'DefaultLegendInterpreter', 'latex');
 %% Define system
 
 % Fundamental parameters
-Dmod = .38*.01;
-Nmod = 1;
+Dmod = [.38 .12 .09 .08 .08]*.01;
+Nmod = 5;
 setup = 'New_Design_Steel';
 thickness = .001;
 [L,rho,E,om,PHI,~,gam] = beams_for_everyone(setup,Nmod,thickness);
@@ -86,7 +84,7 @@ oscillator = System_with_PolynomialStiffnessNonlinearity(M,D,K,p,E,Fex1);
 n = oscillator.n;
 
 %% harmonic order
-H = 3;              
+H = 9;              
 
 %% Compute frequency response using harmonic balance
 analysis = 'FRF';
@@ -96,9 +94,11 @@ Ntd = 1e3;
 % Analysis parameters
 Om_s = om(1)*.2;      % start frequency
 Om_e = 3*om(1);     % end frequency
+% Om_s = om(5)*.7;      % start frequency
+% Om_e = 1.5*om(5);     % end frequency
 
 % Excitation levels
-exc_lev = [10,40,60,80,100];
+exc_lev = [50, 70, 120];
 Om = cell(size(exc_lev));
 for iex=1:length(exc_lev)
     % Set excitation level
@@ -121,6 +121,7 @@ for iex=1:length(exc_lev)
     
     % Interpret solver output
     Om{iex} = X(end,:);
+    HB{iex} = X(1:end-1,:);
     Q_HB = X(1:end-1,:);
        
     % Define amplitude as magnitude of the fundamental harmonic of the
@@ -137,6 +138,7 @@ for iex=1:length(exc_lev)
 
 end
 
+
 %% NMA
 N=2*3*H+1;
 
@@ -148,8 +150,8 @@ PHI_lin = PHI_lin(:,ind);
 analysis = 'NMA';
 
 imod = 1;           % mode to be analyzed
-log10a_s = -5;    % start vibration level (log10 of modal mass)
-log10a_e = -3.2;       % end vibration level (log10 of modal mass)
+log10a_s = -9;    % start vibration level (log10 of modal mass)
+log10a_e = -2;       % end vibration level (log10 of modal mass)
 inorm = 1;          % coordinate for phase normalization
 
 % Initial guess vector y0 = [Psi;om;del], where del is the modal
@@ -159,8 +161,9 @@ Psi = zeros((2*H+1)*Nmod,1);
 Psi(Nmod+(1:Nmod)) = phi;
 x0 = [Psi;om;0];
 
-ds      = .001;
-Sopt    = struct('dynamicDscale',1,'stepmax',5e4,'dsmax',0.002);
+ds      = .1;
+Sopt    = struct('Dscale',[1e-6*ones(size(x0,1)-2,1);1;1e-1;1],...
+    'dynamicDscale',1,'stepmax',5e4);
 [X_NM,Solinfo,Sol] = solve_and_continue(x0,...
     @(X) HB_residual(X,oscillator,H,N,analysis,inorm),...
     log10a_s,log10a_e,ds, Sopt);
@@ -185,6 +188,96 @@ end
 
 a_w_L_2_NMA = sqrt([1 0.5*ones(1,2*H)]*w_L_2_NMA_sum.^2); % compute amplitude
 
-save FlatBeam_FRF.mat
+% Illustrate phase diagram
+figure(1)
+hold on
+for iex=1:length(exc_lev)
+    plot(Om{iex}, phase{iex}, '-', 'LineWidth', 2);
+end
 
+for iex=1:length(exc_lev)
+    res{iex} = interp1(phase{iex},Om{iex},-90);
+    plot(res{iex},-90,'ok', 'LineWidth', 2)  % find resonance point
+end
+
+xlabel('Forcing Frequency $\omega$ (Hz)')
+ylabel('Response phase (degs)')
+legend('Fex = 50','Fex = 70','Fex = 120','EPMC',...
+    'Location','E');
+hold off
+
+% Illustrate frequency response
+figure (2); hold on; box on
+for iex=1:length(exc_lev)
+plot(Om{iex},a_w_L_2{iex},'linewidth',1.5);
+end
+plot(om_HB,abs(a_w_L_2_NMA),'--k','linewidth',2)
+legend('Fex = 50','Fex = 70','Fex = 120','EPMC',...
+    'Location','E');
+for iex=1:length(exc_lev)
+peak_amp = interp1(Om{iex},a_w_L_2{iex},res{iex}); % mark resonance point
+plot(res{iex},peak_amp,'ok', 'LineWidth', 2)
+end
+xlabel('Forcing Frequency $\omega$ (Hz)')
+ylabel('RMS Response Displacement Amplitude (m)')
+% title('Flat Beam FRF -- Mode 1')
+xlim([500 4500])
+
+plot(om_HB,abs(a_w_L_2_NMA),'--k','linewidth',2)
+legend('Fex = 50','Fex = 70','Fex = 120','EPMC',...
+    'Location','E');
+hold off
+
+figure (3)
+semilogx(a_NMA,del_HB*1e2,'b-','LineWidth',2);
+% semilogx(1000*abs(a_w_L_2_NMA),del_HB*1e2,'b-','LineWidth',2);
+xlabel('Modal Amplitude'); ylabel('Damping Factor')
+title('Damping Ratio')
+
+figure (4)
+semilogx(a_NMA,om_HB/2/pi,'linewidth',2);
+xlabel('Modal Amplitude'); ylabel('Natural Frequency (Hz)')
+
+for iex=1:length(exc_lev)
+ind{iex} = find(a_w_L_2{iex}==max(a_w_L_2{iex}));
+coeff{iex} = HB{iex}(:,ind{iex});
+end
+
+len = linspace(0,L,100);
+for i = 1:100
+    mode_shape(i,:) = PHI(len(i));
+end
+
+tau = linspace(0,2*pi,Ntd+1); tau = tau(1:end-1);
+w_L_2_sum = zeros(5,Ntd);  
+for iex=1:length(exc_lev)
+    Q_HB = HB{iex}(:,ind{iex});
+    for k = 1:n
+    Qc{k} = [Q_HB(k,:);Q_HB(n+k:2*n:end,:)-1i*Q_HB(2*n+k:2*n:end,:)];   % get complex coefficients
+    w_L_2_sum(k,:) = real(exp(1i*tau(:)*(0:H))*Qc{k});             % get displacement at center caused by each mode in time domain
+    shape = mode_shape*w_L_2_sum;
+    end
+    loc{iex} = find(shape(50,:)==max(shape(50,:)));
+    deflect{iex} = shape(:,loc{iex});
+end
+
+figure (5)
+hold on
+for iex=1:length(exc_lev)
+    plot (len,deflect{iex},'LineWidth',2)
+end
+hold off
+legend('Fex = 50','Fex = 70','Fex = 120',...
+    'Location','NE');
+xlabel('L'); ylabel('Deflection')
+
+figure (6)
+hold on
+for k=1:n
+    plot (len,mode_shape(:,k),'LineWidth',2)
+end
+hold off
+legend('Mode = 1','Mode = 2','Mode = 3','Mode = 4','Mode = 5',...
+    'Location','NE');
+xlabel('L'); ylabel('Mode Shape')
 
