@@ -25,8 +25,8 @@ disp('Identified Modal Parameters')
 fprintf('Nat freq %s Hz. \ndamping %s\n',wn,zeta)
 
 % similarity transform to get state space matrices in physical coordinates
-[Ap,Bp,Cp,T] = ss2phys(sys_ct.A,sys_ct.B,sys_ct.C);
-sys_phys = ss(Ap,Bp,Cp,model.D);
+% [Ap,Bp,Cp,T] = ss2phys(sys_ct.A,sys_ct.B,sys_ct.C);
+% sys_phys = ss(Ap,Bp,Cp,model.D);
 
 
 %% optimization path / convergence
