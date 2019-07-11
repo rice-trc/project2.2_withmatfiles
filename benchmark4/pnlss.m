@@ -3,9 +3,27 @@ clear all
 close all
 addpath('../src/pnlss/')
 
+%% Combined data
+fchar = 'comb';
 fdir = 'famp01';
-load(sprintf('./TRANSIENT/%s/CLCLEF_MULTISINE.mat',fdir), 'u', 'y', 'fdof', 't', 'f1', 'f2', 'df', 'freqs', 'fsamp');
+f01 = load(sprintf('./TRANSIENT/%s/CLCLEF_MULTISINE.mat',fdir), ...
+    'u', 'y', 'fdof', 't', 'f1', 'f2', 'df', 'freqs', 'fsamp');
+fdir = 'famp05';
+f05 = load(sprintf('./TRANSIENT/%s/CLCLEF_MULTISINE.mat',fdir), ...
+    'u', 'y', 'fdof', 't', 'f1', 'f2', 'df', 'freqs', 'fsamp');
 
+y = cat(3, f01.y, f05.y);
+u = cat(3, f01.u, f05.u);
+fdof = f01.fdof;
+t = f01.t;
+f1 = f01.f1;
+f2 = f01.f2;
+df = f01.df;
+freqs = f01.freqs;
+fsamp = f01.fsamp;
+Rlsns = size(u,3);
+
+%%
 [Nt, P, R, n] = size(y);
 
 % Use excitation node response
@@ -41,9 +59,7 @@ Y = fft(y);  Y = Y(lines, :, :, :);  % Output Spectrum at excited lines
 
 [G, covGML, covGn] = fCovarFrf(U, Y);
 
-
 % Estimate linear state-space model (frequency domain subspace)
-
 % Model order
 na = 3;
 maxr = 20;
@@ -82,16 +98,8 @@ u = mean(u, 4);
 y = mean(y, 4);
 m = size(u,2);
 p = size(y,2);
-uc = zeros(Nt*P*(R-1), m);
-yc = zeros(Nt*P*(R-1), p);
-for i=1:m
-    tmp = u(:, i, :, :);
-    uc(:, i) = tmp(:);
-end
-for i=1:p
-    tmp = y(:, i, :, :);
-    yc(:, i) = tmp(:);
-end
+uc = u(:);
+yc = y(:);
 
 % Transient settings
 Ntrans = Nt;
@@ -159,7 +167,7 @@ fprintf('e_est_lin:\t %0.3e\t e_est_nl:\t %0.3e\n', err(1,:))
 fprintf('e_val_lin:\t %0.3e\t e_val_nl:\t %0.3e\n', err(2,:))
 fprintf('e_test_lin:\t %0.3e\t e_test_nl:\t %0.3e\n',err(3,:))
 
-save('./data/pnlssout_try0.mat', 'modellinest', 'model')
+save(sprintf('./pnlss%s.mat',fchar), 'modellinest', 'model')
 
 %% Results
 
@@ -178,6 +186,8 @@ title('Selection of the best model on a separate data set')
 plottime = [yc errest_lin errest_nl];
 plotfreq = fft(reshape(plottime,[Nt,R,3]));
 plotfreq = squeeze(mean(plotfreq,2));
+pause(0.1)
+
 
 fh{2} = figure;
 plot(t(1:Nt*R),plottime)
@@ -189,6 +199,8 @@ disp(' ')
 disp(['rms(y-y_mod) = ' num2str(rms(yc-y_mod))...
     ' (= Output error of the best PNLSS model on the estimation data)'])
 % disp(['rms(noise(:))/sqrt(P) = ' num2str(rms(noise(:))/sqrt(P)) ' (= Noise level)'])
+print(sprintf('./FIGURES/PNLSS_%s_TDOMRES.eps',fchar), '-depsc')
+pause(0.1)
 
 freq = (0:Nt-1)/Nt*fsamp;
 
@@ -204,6 +216,7 @@ title('Estimation results')
 % Validation data
 plottime = [yval errval_lin errval_nl];
 plotfreq = fft(plottime);
+pause(0.1)
 
 fh{4} = figure;
 plot(freq(1:end/2),db(plotfreq(1:end/2,:)),'.')
@@ -211,10 +224,12 @@ xlabel('Frequency (Hz)')
 ylabel('Output (errors) (dB)')
 legend('Output','Linear error','PNLSS error')
 title('Validation results')
+print(sprintf('./FIGURES/PNLSS_%s_VALIDAT.eps', fchar), '-depsc')
 
 % Test, ie. newer seen data
 plottime = [ytest errtest_lin errtest_nl];
 plotfreq = fft(plottime);
+pause(0.1)
 
 fh{5} = figure;
 plot(freq(1:end/2),db(plotfreq(1:end/2,:)),'.')
@@ -234,6 +249,8 @@ xlabel('frequency (Hz)')
 ylabel('magnitude (dB)')
 title(['Estimated BLA: uStd = ' num2str(uStd)])
 legend('BLA FRF','Noise Distortion','Total Distortion','Location','nw')
+print(sprintf('./FIGURES/PNLSS_%s_BLA_distort.eps', fchar), '-depsc')
+pause(0.1)
 
 % %% save the plots
 % if savefig

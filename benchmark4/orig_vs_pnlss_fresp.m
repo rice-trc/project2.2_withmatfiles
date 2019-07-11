@@ -147,6 +147,7 @@ end
 %% PNLSS
 Alevel = '05';
 load(sprintf('./TRANSIENT/famp%s/CLCLEF_MULTISINE.mat',Alevel), 'fsamp')
+Alevel = 'comb';
 load(sprintf('./pnlss%s.mat', Alevel),'model');
 
 Ndpnlss = size(model.A,1);
