@@ -1,7 +1,11 @@
 clear; clc;
 close all; 
-addpath('00_SRC');
-addpath('00_SRC/MechanicalSystems');
+
+srcpath = '../src/nlvib';
+addpath(genpath(srcpath));
+srcpath = '../';
+addpath(genpath(srcpath));
+
 set(0,'defaultAxesTickLabelInterpreter', 'default');
 set(0,'defaultTextInterpreter','latex'); 
 set(0, 'DefaultLegendInterpreter', 'latex'); 

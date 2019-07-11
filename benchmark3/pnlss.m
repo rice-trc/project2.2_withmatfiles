@@ -18,10 +18,10 @@ srcdir = '../src/matlab';
 addpath(genpath(srcdir));
 
 savename = 'pnlss1';
-benchmark = 1;
+benchmark = 2;
 data.A = 10;
-data.name = 'ms_full';
-data.name = 'ode8_test';
+data.name = 'up8_ms_full';
+% data.name = 'ode8_test';
 
 show_ms = false;
 show_pnlss = true;
@@ -62,10 +62,23 @@ end
 switch benchmark
     case 1
         PHIS = sys.PHI([sys.L/2]);
+        % Nonlinear terms
+        nx = [3];
+        ny = [];
+        whichtermsx = 'statesonly'; % full
+        whichtermsy = 'empty';
     case 2
         PHIS = sys.PHI([sys.L/4; sys.L/2; 3/4*sys.L]);
+        nx = [3];
+        ny = [];
+        whichtermsx = 'statesonly'; % full
+        whichtermsy = 'empty';
     case 3
         PHIS = sys.PHI([sys.L/4; sys.L/2; 3/4*sys.L]);
+        nx = [2,3];
+        ny = [];
+        whichtermsx = 'statesonly'; % full
+        whichtermsy = 'empty';
 end
 
 % convert to measurement points using modal shapes from Phi.
@@ -160,13 +173,14 @@ bla.lines = lines; bla.covY = covY; bla.fs = fs;
 
 % Choose model order
 na   = [2,3]; % [2,3,4]
-maxr = 10;%20;
+maxr = 20;%20;
 % Excited frequencies (normalized). -1 because lines are given wrt. fft.
-freq_norm = (lines-1)/Nt;
+freq_norm = (bla.lines-1)/Nt;
 % alternative: freq(lines)/fs
 % Uncomment for uniform weighting (= no weighting)
 % covGML = repmat(eye(1),[1 1 length(lines)]);
-[linmodels, subspacedata, ~]= fLoopSubSpace(freq_norm,bla.G,bla.covGML,na,maxr,100);
+%% NBNBNB. NO WEIGTHING. ADD AGAIN! covGML
+[linmodels, subspacedata, ~]= fLoopSubSpace(freq_norm,bla.G,0,na,maxr,100);
 
 % Extract linear state-space matrices from best model on validation data
 Nval = length(uval);
@@ -200,7 +214,7 @@ n = length(A);
 fprintf('Model order selected, n: %d\n',n)
 
 % plot subspace models
-hfig = fPlotSubSpace(subspacedata,linmodels,bla.G,bla.covGML,freq(lines),fs,na,maxr);
+hfig = fPlotSubSpace(subspacedata,linmodels,bla.G,bla.covGML,bla.freq(bla.lines),fs,na,maxr);
 h = hfig{1}{1};
 title(h.CurrentAxes,'Subspace models. Stars: LM optimized')
 
@@ -222,15 +236,8 @@ NTrans = 2*Nt; % Add one period before the start of each realization
 T1 = [NTrans 1+(0:Nt:(R-1)*Nt)]; 
 T2 = 0; % No non-periodic transient handling
 
-% Nonlinear terms
-nx = [3];
-ny = [];
-whichtermsx = 'statesonly';
-% whichtermsx = 'full';
-whichtermsy = 'empty';
-
 % Settings Levenberg-Marquardt optimization
-MaxCount = 30;
+MaxCount = 100;
 lambda = 100;
 
 % Initial linear model in PNLSS form
@@ -325,13 +332,14 @@ sys_ct_sub = d2c(ss(modellinest.A,modellinest.B,modellinest.C,modellinest.D,1/si
 sd = modal(sys_ct_sub.A,sys_ct_sub.C);
 wn = sprintf('%0.5g, ', sd.wn);
 zeta = sprintf('%0.5g, ', sd.zeta);
-disp('Identified Modal Parameters')
+disp('Identified Linear Modal Parameters')
 fprintf('Nat freq %s Hz. \ndamping %s\n',wn,zeta)
 
 % similarity transform to get state space matrices in physical coordinates
-[Ap,Bp,Cp,T] = ss2phys(sys_ct.A,sys_ct.B,sys_ct.C);
-sys_phys = ss(Ap,Bp,Cp,model.D);
-
+if p == 1 %% so far, only works for one input
+    [Ap,Bp,Cp,T] = ss2phys(sys_ct.A,sys_ct.B,sys_ct.C);
+    sys_phys = ss(Ap,Bp,Cp,model.D);
+end
 %% plot
 if show_pnlss
     figname = sprintf('b%d_A%d_%s',benchmark,data.A,data.name );

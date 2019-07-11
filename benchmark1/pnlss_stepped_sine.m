@@ -17,7 +17,7 @@ PHI_L2 = PHI(L/2);
 fname = ['beam_New_Design_Steel_analytical_5t_' ...
     num2str(thickness*1000) 'mm.mat'];
 [p, E] = nlcoeff(fname, Nmod);
-E = 0;
+% E = 0;
 
 % Properties of the underlying linear system
 M = eye(Nmod);
@@ -27,13 +27,11 @@ K = diag(om.^2);
 % Fundamental harmonic of external forcing
 Fex1 = gam;
 
-Om_s = 200*2*pi;      % start frequency
-Om_e = 700*2*pi;     % end frequency
-
 
 %% state space
 
-fs = 2^16;
+fs_init = 2^18;
+fs = fs_init;
 
 % Continuous time model
 ctmodel.A = [0 1;
@@ -65,22 +63,95 @@ model.F = dtmodel.F;
 model.xpowers = dtmodel.xpowers;
 model.ypowers = dtmodel.ypowers;
 
+% % transient periods to simulate and remove to ensure steady state
+% NTrans = 10*Nt;  % Add 10 periods before the start
+% % Number of transient samples and starting indices of each realization
+% T1 = [NTrans 1+(0:Nt*P:(R-1)*Nt*P)]; 
+% model.T1 = T1;
+% model.T1 = NTrans;
+
 %% simulate model -- From here is new!
 % direction to sweep
 dir = 1; % or -1
 
 % We see each increment in frequency as a new realization.
-Om_vec =linspace(Om_s, Om_e, 50)/2/pi;%  [200 264 260.7 300]; %linspace(Om_s, Om_e, 50)/2/pi;  % Vector of excited frequencies
+% Vector of excited frequencies. In Hz!
 Om_vec = linspace(200,350,25);
 Om_vec = [linspace(200, 260, 10) linspace(260, 270, 20) linspace(270, 350, 10)];
+
 if dir == -1
     Om_vec = fliplr(Om_vec);
 end
 R = length(Om_vec);
 P = 20;
+
+% amplitudes to loop over
+Avec = 80; %[10,40,80,100];
+Avec = [10 40 80 100];
+
+% periods to calculate max amp over.
+nper = 5;
+
+%% Simulate with constant fs, non-integer periods
+% this is the only way to simulate the nolinear sys. Slow!
+
+Nt = 1e3;
+Ptrans = 150;
+nsim = fs/Nt;
+T = linspace(0, (P+Ptrans)/nsim, Nt*(P+Ptrans)+1); T(end) = [];
+y = zeros(Nt*P,R);
+
+a_max = zeros(R,length(Avec));
+j = 1;
+for A = Avec
+    X0 = zeros(length(model.A),1);
+    for i = 1:R
+        Om = Om_vec(i);
+        u = A*sin(2*pi*Om*T);
+        % [Y, ~, X] = lsim(ss(model.A,model.B,model.C,model.D,-1),u,[],X0);
+        [Y, X] = fFilterNLSS(model,u,X0); % Modeled output signal
+        % [Y, ~, X] = lsim(ss(ctmodel.A,ctmodel.B,ctmodel.C,ctmodel.D),u,T,X0);
+        X0 = X(end,:);
+        ymax = max(Y(end-nper*Nt+1:end));
+        ymin = min(Y(end-nper*Nt+1:end));
+        a_max(i,j) = abs(0.5*(ymax-ymin));
+        Y = Y(Ptrans*Nt+1:end);
+        y(:,i) = Y;
+        if sum(any(isnan(Y)))
+            fprintf('Error: simulation exploded. Try increase fs. r:%d\n',i)
+            break % don't quit, we still want to save data.
+        end
+    end
+    j = j+1;
+    fprintf('A: %g\n',A)
+end
+
+save(sprintf('data/stepped_sweep_dir%d',dir),'Om_vec','a_max')
+
+% plot max amplitudes -- poor mans frf
+figure
+plot(Om_vec, a_max, 'x-')
+xlabel('Frequency (Hz)')
+ylabel('Max amplitude (m)')
+
+
+% Plot time signal
+t = linspace(0, (P)/nsim, Nt*(P)+1); t(end) = [];
+figure
+hold on
+for i = 1:R
+    plot(t, y(:,i))
+end
+xlabel('Time (s)')
+ylabel('Amplitude (m)')
+
+
+%% Simulate with changing fs, keep Nt and Om constant. Integer periods
+% this is the fastest way to simulate the linear system
+
 Nt = 2^12;                          % points per period
-t = zeros(length(Om_vec), Nt*P+1);  % end time depends on forcing freq
-for i = 1:length(Om_vec)
+t = zeros(R, Nt*P+1);  % end time depends on forcing freq
+for i = 1:R
     t(i,:) = linspace(0, P/Om_vec(i), Nt*P+1);  % If Om (rad/s), multiply end time by 2*pi
 end
 t(:,end) = [];
@@ -100,41 +171,29 @@ a_rms = zeros(length(Om_vec),length(Avec));
 ph_rs = zeros(length(Om_vec),length(Avec));
 j = 1;
 for A = Avec
-%     u = A*sin(2*pi*Om_vec(:).*t);  % R x Nt*P
-%     u = reshape(u',1,[]); % Nt*P*R x m
-%     
-%     y = fFilterNLSS(model,u); % Modeled output signal
-    
-    % calculate max amplitude
-%     yper = reshape(y, [Nt*P,R]);
-    
-    % take amplitude as max-min over last 5 periods
-    nper = 2;
     X0 = zeros(length(model.A),1);
-    y = zeros(Nt*P,length(Om_vec));
-    for i = 1:length(Om_vec)
+    y = zeros(Nt*P,R);
+    for i = 1:R
         Om = Om_vec(i);
         Ptrans = 150;
         T = linspace(0, (P+Ptrans)/Om, Nt*(P+Ptrans)+1); T(end) = [];
-        fs = Nt*Om;
         u = A*sin(2*pi*Om*T);
-
+        fs = Nt*Om;
         [Y, ~, X] = lsim(c2d(ss(ctmodel.A,ctmodel.B,ctmodel.C,ctmodel.D),1/fs),u,[],X0);
 %         [y, ~, X] = lsim(ss(ctmodel.A,ctmodel.B,ctmodel.C,ctmodel.D),u,T,X0);
 %         [Y, ~, X] = lsim(ss(model.A,model.B,model.C,model.D,1/fs),u,[],X0);
 %         [y, X] = fFilterNLSS(model,u,X0); % Modeled output signal
         X0 = X(end,:);
         Y = Y(Ptrans*Nt+1:end);
-        U = u(Ptrans*Nt+1:end)';
-        ymax = max(Y(end-nper*Nt-1:end));
-        ymin = min(Y(end-nper*Nt-1:end));
+        ymax = max(Y(end-nper*Nt+1:end));
+        ymin = min(Y(end-nper*Nt+1:end));
         a_max(i,j) = abs(0.5*(ymax-ymin));
-
-        % FFT on last period
-        yf = fft(Y(end-Nt+1:end))/(Nt/2);  yf(1) = yf(1)/2;
-        uf = fft(U(end-Nt+1:end))/(Nt/2);  uf(1) = uf(1)/2;
         
-%         a_rms(i,j) = sqrt(sum(Y.^2)/fs*Om/P);  % trapezoidal integration; inaccurate        
+        % FFT on last period
+        U = u(Ptrans*Nt+1:end)';
+        yf = fft(Y(end-Nt+1:end))/(Nt/2);  yf(1) = yf(1)/2;
+        uf = fft(U(end-Nt+1:end))/(Nt/2); uf(1) = uf(1)/2;
+        %         a_rms(i,j) = sqrt(sum(Y.^2)/fs*Om/P);  % trapezoidal integration; inaccurate
         a_rms(i,j) = sqrt(yf(1)^2 + 0.5*vecnorm(yf(2:Nt/2)).^2);  % might as well use freq dom.
         ph_rs(i,j) = rad2deg(angle(yf(2)/uf(2)));
         y(:,i) = Y;
@@ -143,59 +202,34 @@ for A = Avec
     fprintf('A: %g\n',A)
 end
 
-save(sprintf('data/stepped_sweep_dir%d',dir),'Om_vec','a_max')
-
-
-% %% plot max amplitudes -- poor mans frf
-% figure
-% hold on
-% for i = 1:length(Avec)
-%     plot(Om_vec, a_max(:,i), 'x')
-% end
-% xlabel('Frequency (Hz)')
-% ylabel('Max amplitude (m)')
-
-%% plot rms amplitudes -- rich mans frf
+% plot rms amplitudes -- rich mans frf
 figure
-hold on
-for i = 1:length(Avec)
-    plot(Om_vec, a_rms(:,i), 'x-')
-end
+plot(Om_vec, a_rms, 'x-')
 xlabel('Frequency (Hz)')
 ylabel('RMS amplitude (m)')
 
-%% plot phases
 figure
-hold on
-for i = 1:length(Avec)
-    plot(Om_vec, ph_rs(:,i), 'x-')
-end
+plot(Om_vec, a_max, 'x-')
+xlabel('Frequency (Hz)')
+ylabel('Max amplitude (m)')
+
+% plot phases
+figure
+plot(Om_vec, ph_rs, 'x-')
 xlabel('Response relative phase (degs)')
 ylabel('Max amplitude (m)')
 
-
-%% Plot time signal
+% Plot time signal
 y1 = reshape(y, [Nt*P,R]);
-
 figure
 hold on
-for i = 1:length(Om_vec)
+for i = 1:R
     plot(t(i,:), y1(:,i))
 end
 xlabel('Time (s)')
 ylabel('Amplitude (m)')
 
-%% plot freq content of last 5 periods
-
-Y = fft(y1(end-Nt*5-1:end,:),[],1);  % along 1st dim
-ndft = size(Y,1)/2;
-figure
-hold on
-for i = 1:length(Om_vec)
-plot(db(abs(Y(1:ndft,i))))
-end
-
-%% Check periodicity
+% Check periodicity
 yper = reshape(y, [Nt,P,R]);
 r = 1;
 figure;
@@ -207,5 +241,49 @@ xlabel('time (s)')
 ylabel('Relative error to last period (dB)')
 title([num2str(Nt) ' samples per period'])
 
-fprintf('The mean error between last two periods: %g\n',mean(per(:,end)))
+%% Simulate integer periods. Constant fs. Change Nt and Om accordingly
+% To keep the sampling frequency fixed, while changing Om and still only
+% simulating a fixed number of periods; Nt is calculated for each Om,
+% rounded and then Om is recalculated.
+% Nt can be very very low(if fs is), we need more periods for steady state.
+fs = fs_init;
+dt = 1/fs;
+Nt_vec = fix(1./(Om_vec*dt));
+Om_vec = 1./(Nt_vec*dt);
+j = 1;
+for A = Avec
+    X0 = zeros(length(model.A),1);
+    y = cell(length(Om_vec),1);
+    t = cell(length(Om_vec),1);
+    for i = 1:length(Om_vec)
+        Om = Om_vec(i);
+        Nt = Nt_vec(i);
+        Ptrans = 500;
+        T = linspace(0, (P+Ptrans)/Om, Nt*(P+Ptrans)+1); T(end) = [];
+        u = A*sin(2*pi*Om*T);
+        [Y, ~, X] = lsim(ss(model.A,model.B,model.C,model.D,-1),u,[],X0);
+        X0 = X(end,:);
+        ymax = max(Y(end-nper*Nt+1:end));
+        ymin = min(Y(end-nper*Nt+1:end));
+        a_max(i,j) = abs(0.5*(ymax-ymin));
+        y{i} = Y;
+        t{i} = T;
+    end
+    j = j+1;
+    fprintf('A: %g\n',A)
+end
 
+% plot max amplitudes -- poor mans frf
+figure
+plot(Om_vec, a_max, 'x-')
+xlabel('Frequency (Hz)')
+ylabel('Max amplitude (m)')
+
+% Plot time signal
+figure
+hold on
+for i = 1:length(Om_vec)
+    plot(t{i}, y{i})
+end
+xlabel('Time (s)')
+ylabel('Amplitude (m)')

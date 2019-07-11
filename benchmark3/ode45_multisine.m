@@ -38,12 +38,15 @@ switch benchmark
         % exploding sol, when doing fixed dt integration.(ie. higher fs)
         % higher fs is obtained by decreasing N or increasing Nt.
         N = 2e3;
-        Nt = 1e4;
+        Nt = 2^12;
         upsamp = 8;
     case 3
-        exc_lev = [1,15,50];
+        exc_lev = [1,10,20,30];
         f1 = 50;
         f2 = 405;
+        N = 2e3;
+        Nt = 2^12;
+        upsamp = 8;
 end
 
 sys = load_sys(benchmark);
@@ -119,7 +122,7 @@ for r=1:R
         ydot(:,:,r,:) = reshape(Y(:,n+1:end), [Nt,P,n]);
     end
     if sum(any(isnan(y))) || sum(any(isnan(ydot)))
-        fprintf('Error: simulation exploded. Try increase fs\n')
+        fprintf('Error: simulation exploded. Try increasing Nt or upsamp\n')
         break % don't quit, we still want to save data.
     end
 end
