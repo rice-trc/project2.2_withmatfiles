@@ -225,13 +225,21 @@
   enough damping of higher modes.\\
   For benchmark 1-3 (polynomial nl):
 
-  \begin{lstlisting}[language=matlab]
+\begin{lstlisting}[language=matlab]
     n = 2;
     whichtermsx = 'statesonly';
     whichtermsy = 'empty';
     nx = [3]    % benchmark 1/2
     nx = [2,3]  % benchmark 3
-  \end{lstlisting}
+\end{lstlisting}
+  Nonlinear monomials
+  \begin{itemize}
+  \item[$nx = [2,3]$]: $x_1^2,x_1x_2,x_2^2$, $x_1^3,x_1^2x_2,x_1x_2^2,x_2^3$ $\rightarrow$ 23
+    parameters to estimate
+  \item[$nx = [3]$]: $x_1^3,x_1^2x_2,x_1x_2^2,x_2^3$ $\rightarrow$ 17 parameters
+  \end{itemize}
+
+
 \end{frame}
 
 
