@@ -1,5 +1,7 @@
 function [FnlcOUT,dFnlcOUT] = mhbm_pnlss_aft(XcIN,dXcIN,pp,Et,Uc,Nh,Ntd)
 
+%     Et = Et*dt*fs;
+
     %% Inverse DFT
 
     % Apply IDFT to every coordinate in x
@@ -7,12 +9,12 @@ function [FnlcOUT,dFnlcOUT] = mhbm_pnlss_aft(XcIN,dXcIN,pp,Et,Uc,Nh,Ntd)
     Xc = transpose(reshape(XcIN,nx,Nh+1));
     Xc = [Xc(1,:); Xc(2:end,:)/2; zeros(Ntd-Nh-1,nx)];
     Xc(end-Nh+1:end,:) = flipud(conj(Xc(2:Nh+1,:)));
-    x_tau = ifft(Xc)*Ntd;
+    x_tau = ifft(Xc)*Ntd;  
 
     % Apply IDFT to u
     Uc = [Uc(1); Uc(2:end)/2; zeros(Ntd-Nh-1,1)];
     Uc(end-Nh+1:end,:) = flipud(conj(Uc(2:Nh+1,:)));
-    u_tau = ifft(Uc)*Ntd;
+    u_tau = ifft(Uc)*Ntd;  % Sampled at Omega/(2pi)/Ntd
     
     %% Evaluate nonlinear terms and apply DFT
     z_tau = prod(kron([x_tau u_tau],ones(size(pp,1),1)).^repmat(pp,Ntd,1),2);

@@ -1,9 +1,15 @@
 %% mhbm_aft_residual_pnlss.m
 function [R,dR_dXOm,dR_dX,dR_dOm,Fnlc,Xc,Om] = ...
     mhbm_aft_residual_pnlss_discrete(XO,At,Bt,Et,pp,dt,Uc,Nh,Ntd)
-    
+
     X = XO(1:end-1);
     Om = XO(end);
+    
+% 	%% Convert discrete time model matrices
+%     dtmodel = d2d(ss(At, Bt, Bt'*0, 0, dt), 2*pi/Om/Ntd);
+%     At = dtmodel.A;
+%     Bt = dtmodel.B;
+%     dt = 2*pi/Om/Ntd;
     
     %% Real-to-complex conversion
     nx = size(At,2);
@@ -21,7 +27,7 @@ function [R,dR_dXOm,dR_dX,dR_dOm,Fnlc,Xc,Om] = ...
     dFnlc_dX = dFnlc(:,1:end-1); dFnlc_dOm = dFnlc(:,end);
     
     %% Assembly of the residual and the Jacobian
-
+    
     % Frequency domain derivative matrix and its derivative w.r.t. Om
     % D = 1i*Om*kron(diag(0:Nh),eye(nx));
     D = kron(diag(exp(1i*Om*dt*(0:Nh))),eye(nx));
@@ -33,6 +39,16 @@ function [R,dR_dXOm,dR_dX,dR_dOm,Fnlc,Xc,Om] = ...
     Rc = A*Xc+B*Uc+Fnlc;
     dRc_dX = A*dXc_dX+dFnlc_dX;
     dRc_dOm = -dD_dOm*Xc+dFnlc_dOm;
+    
+    % Scale residual by 1/dt, which should improve numerical conditioning
+    Rc = Rc/dt;
+    dRc_dX = dRc_dX/dt;
+    dRc_dOm = dRc_dOm/dt;
+    
+%     % Add preconditioner to residuals
+%     Rc = Precond*Rc;
+%     dRc_dX = Precond*dRc_dX;
+%     dRc_dOm = Precond*dRc_dOm;
     %% Complex-to-real conversion
     R = zeros(size(X));
     R(i0) = real(Rc(1:nx));

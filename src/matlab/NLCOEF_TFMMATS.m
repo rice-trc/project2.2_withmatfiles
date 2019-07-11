@@ -5,11 +5,14 @@ function [Tmat] = NLCOEF_TFMMATS(Phi, Xpowers)
 %   Tmat = NLCOEF_TFMMATS(Phi, Xpowers);
 %  INPUTS:
 %       Phi     :  nxn Transformation matrix (n states)
+%                   Phi such that
+%                   X = Phi*Q;
 %       Xpowers :  nz x n Matrix of powers of each state per nonlinear term
 %                   (nz nonlinear terms)
 %  OUTPUTS:
 %       Tmat    :  nzxnz matrix transforming nonlinear terms from physical
 %                   to transformed domain
+%                   g(X) = g(Phi*Q) = Tmat*g(Q)
     n  = size(Phi, 1);
     nz = size(Xpowers, 1);
     

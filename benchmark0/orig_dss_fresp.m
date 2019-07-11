@@ -15,11 +15,11 @@ thickness = .001;
 [L,rho,E,om,PHI,~,gam] = beams_for_everyone(setup,Nmod,thickness);
 PHI_L2 = PHI(L/2);
 
-% load nonlinear coefficients (can be found e.g. analytically)
+% set nonlinear coefficient to 0
 fname = ['beam_New_Design_Steel_analytical_5t_' ...
     num2str(thickness*1000) 'mm.mat'];
-[p, E] = nlcoeff(fname, Nmod);
-% E = 0;
+p = 3;
+E = 0;
 
 % Properties of the underlying linear system
 M = eye(Nmod);
@@ -37,13 +37,13 @@ n = oscillator.n;
 
 %% Frequency response of original system using HBM
 analysis = 'FRF';
-H = 1;              % harmonic order
+H = 7;              % harmonic order
 N=2*3*H+1;
 Ntd = 2^6;
 
 % Analysis parameters
 Om_s = 200*2*pi;      % start frequency
-Om_e = 750*2*pi;     % end frequency
+Om_e = 350*2*pi;     % end frequency
 
 % Excitation levels
 exc_lev = [10 40 60 80 100];
@@ -60,8 +60,8 @@ for iex=1:length(exc_lev)
     qscl = max(abs((-om(1)^2*M + 1i*om(1)*D + K)\oscillator.Fex1));
     
     % Solve and continue w.r.t. Om
-    ds = 100; % -> better for exc_lev = 50
-    
+    ds = 1e2; % -> better for exc_lev = 50
+        
     TYPICAL_x = oscillator.Fex1/(2*D*M*om^2);
     Dscale = [TYPICAL_x*ones(length(y0),1);(Om_s+Om_e)/2];
     Sopt = struct('Dscale',Dscale,'dynamicDscale',1,'jac','full','stepmax',1e4);
@@ -79,6 +79,8 @@ end
 % ctmodel.E = [[0; -M\E] zeros(2, 9)];
 
 Ntd = 2^6;
+% samples_per_pseudoperiod = 1e4; Om_ref = (Om_e+Om_s)/2;
+% fs = Om_ref/(2*pi)*samples_per_pseudoperiod;
 fs = 2^12;
 
 % Continuous time model
@@ -116,12 +118,12 @@ Ndpnlss = size(dtmodel.A,1);
 Uc = zeros(H+1,1);
 Uc(2) = 1;
 
-ds = 1*2*pi;
+ds = 0.1*2*pi;
 dsmin = 0.001*2*pi;
-dsmax = 200*2*pi;
+dsmax = 100*2*pi;
 
-Wstart = Om_e;
-Wend   = Om_s;
+Wstart = Om_s;
+Wend   = Om_e;
 
 Xpnlss = cell(length(exc_lev),1);
 Solspnlss = cell(length(exc_lev),1);
@@ -133,23 +135,21 @@ for iex=1:length(exc_lev)
     X0 = [zeros(length(dtmodel.A),1);real(Xc);-imag(Xc);....
             zeros(2*(H-1)*length(dtmodel.A),1)];                  % initial guess
     
-	TYPICAL_x = 1e0*Ff/(2*D*M*om^2);
-%     TYPICAL_x = 1e-2;
-
-% ds = 1*2*pi;
-% dsmin = 0.001*2*pi;
-% dsmax = 10*2*pi;
-
-    Dscale = [TYPICAL_x*ones(length(X0),1);Wstart];
+% 	TYPICAL_x = 1e0*Ff/(2*D*M*om^2);
+%     Dscale = [TYPICAL_x*ones(length(X0),1);Wstart];
+    
+    TYPICAL_x_xd = [1e0; 10]*Ff/(2*D*M*om^2);
+    Dscale = [repmat(TYPICAL_x_xd, 2*H+1, 1); Wstart];
+%     ds = 0.1;
+%     dsmin = ds/5;
+%     dsmax = ds*5;
     Sopt = struct('ds',ds,'dsmin',dsmin,'dsmax',dsmax,'flag',1,'stepadapt',1, ...
             'predictor','tangent','parametrization','arc_length', ...
             'Dscale',Dscale,'jac','full', 'dynamicDscale', 1);
 
-    Precond = 1e0;
     fun_residual = ...
             @(XX) mhbm_aft_residual_pnlss_discrete(XX, dtmodel.A, ...
-            dtmodel.B, dtmodel.E, dtmodel.xpowers, 1/fs, ...
-            Uc*Ff, H, Ntd, Precond);
+            dtmodel.B, dtmodel.E, dtmodel.xpowers, 1/fs, Uc*Ff, H, Ntd);
     Cfun_postprocess = {@(varargin) ...
             mhbm_post_amplitude_pnlss(varargin{:},Uc*Ff,dtmodel.C,dtmodel.D,dtmodel.F,dtmodel.ypowers,H,Ntd)};
     fun_postprocess = @(Y) mhbm_postprocess(Y,fun_residual,Cfun_postprocess);
@@ -160,8 +160,8 @@ for iex=1:length(exc_lev)
 end
 
 %% Plot
-fg1 = 100;
-fg2 = 200;
+fg1 = 10;
+fg2 = 20;
 
 figure(fg1)
 clf()
@@ -188,6 +188,7 @@ xlabel('Forcing frequency \omega (Hz)')
 ylabel('RMS response amplitude (m)')
 % savefig(sprintf('./fig/pnlssfrf_A%d_Amp.fig',Alevel))
 % print(sprintf('./fig/pnlssfrf_A%d_Amp.eps',Alevel), '-depsc')
+print('./fig/amp.png','-dpng')
 
 figure(fg2)
 xlim(sort([Om_s Om_e])/2/pi)
@@ -196,3 +197,4 @@ ylabel('Response phase (degs)')
 legend(aa(1:end), 'Location', 'northeast')
 % savefig(sprintf('./fig/pnlssfrf_A%d_Phase.fig',Alevel))
 % print(sprintf('./fig/pnlssfrf_A%d_Phase.eps',Alevel), '-depsc')
+print('./fig/phase.png','-dpng')

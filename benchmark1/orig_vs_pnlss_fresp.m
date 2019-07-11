@@ -59,9 +59,10 @@ for iex=1:length(exc_lev)
     qscl = max(abs((-om(1)^2*M + 1i*om(1)*D + K)\oscillator.Fex1));
     
     % Solve and continue w.r.t. Om
-    ds = 50; % -> better for exc_lev = 50
+    ds = 100;
         
-    Dscale = [1e-6*ones(length(y0),1);(Om_s+Om_e)/2];
+    TYPICAL_x = oscillator.Fex1/(2*D*M*om^2);
+    Dscale = [TYPICAL_x*ones(length(y0),1);(Om_s+Om_e)/2];
     Sopt = struct('Dscale',Dscale,'dynamicDscale',1,'jac','full','stepmax',1e4);
     X{iex} = solve_and_continue(y0,...
         @(X) HB_residual(X,oscillator,H,N,analysis),...
@@ -83,7 +84,7 @@ Uc(2) = 1;
 
 ds = 1*2*pi;
 dsmin = 0.001*2*pi;
-dsmax = 50*2*pi;
+dsmax = 100*2*pi;
 
 Xpnlss = cell(length(exc_lev),1);
 Solspnlss = cell(length(exc_lev),1);
@@ -95,7 +96,8 @@ for iex=1:length(exc_lev)
     X0 = [zeros(length(model.A),1);real(Xc);-imag(Xc);....
             zeros(2*(H-1)*length(model.A),1)];                  % initial guess
     
-    Dscale = [mean(abs(Xc))*ones(length(X0),1);Om_s];
+	TYPICAL_x = 1e0*Ff/(2*D*M*om^2);
+    Dscale = [TYPICAL_x*ones(length(X0),1);Om_s];
     Sopt = struct('ds',ds,'dsmin',dsmin,'dsmax',dsmax,'flag',1,'stepadapt',1, ...
             'predictor','tangent','parametrization','arc_length', ...
             'Dscale',Dscale,'jac','full', 'dynamicDscale', 1);
@@ -135,13 +137,13 @@ figure(Alevel)
 xlim(sort([Om_s Om_e])/2/pi)
 xlabel('Forcing frequency \omega (Hz)')
 ylabel('RMS response amplitude (m)')
-savefig(sprintf('./fig/pnlssfrf_A%d_Amp.fig',Alevel))
-print(sprintf('./fig/pnlssfrf_A%d_Amp.eps',Alevel), '-depsc')
+% savefig(sprintf('./fig/pnlssfrf_A%d_Amp.fig',Alevel))
+% print(sprintf('./fig/pnlssfrf_A%d_Amp.eps',Alevel), '-depsc')
 
 figure(Alevel+1)
 xlim(sort([Om_s Om_e])/2/pi)
 xlabel('Forcing frequency \omega (Hz)')
 ylabel('Response phase (degs)')
 legend(aa(1:end), 'Location', 'northeast')
-savefig(sprintf('./fig/pnlssfrf_A%d_Phase.fig',Alevel))
-print(sprintf('./fig/pnlssfrf_A%d_Phase.eps',Alevel), '-depsc')
+% savefig(sprintf('./fig/pnlssfrf_A%d_Phase.fig',Alevel))
+% print(sprintf('./fig/pnlssfrf_A%d_Phase.eps',Alevel), '-depsc')

@@ -25,3 +25,6 @@ slprj/
 # BibTeX
 *.bbl
 *.blg
+
+# ignore send directory
+send

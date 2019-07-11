@@ -145,7 +145,7 @@ for k=1:length(Fas)
 end
 
 %% PNLSS
-Alevel = '01';
+Alevel = '05';
 load(sprintf('./TRANSIENT/famp%s/CLCLEF_MULTISINE.mat',Alevel), 'fsamp')
 load(sprintf('./pnlss%s.mat', Alevel),'model');
 
@@ -165,12 +165,20 @@ for iex=1:length(Fas)
     
     X0 = [zeros(length(model.A),1);real(Xc);-imag(Xc);....
             zeros(2*(Nh-1)*length(model.A),1)];                  % initial guess
+%     Dscale = [mean(abs(Xc))*ones(length(X0),1);Wstart];
+
+%     TYPICAL_x = Fas(iex)/(2*Zetas(imod)*Dst(imod)^2);    
+%     Dscale = [TYPICAL_x*ones(length(X0),1);0.5*(Wstart+Wend)];
     
-    Dscale = [mean(abs(Xc))*ones(length(X0),1);Wstart];
+    TYPICAL_x = Fas(iex)/(2*Zetas(imod)*Dst(imod)^2);
+    TYPICAL_xd = 0.5*(Wstart+Wend)*TYPICAL_x;
+    TYPICAL_z = TYPICAL_x;
+    Dscale = [repmat([TYPICAL_x; TYPICAL_xd; TYPICAL_z], 2*Nh+1, 1); (Wstart+Wend)/2];
+    ds = 100;
     Sopt = struct('ds',ds,'dsmin',ds/5,'dsmax',ds*5,'flag',1,'stepadapt',1, ...
             'predictor','tangent','parametrization','arc_length', ...
-            'Dscale',Dscale,'jac','full', 'dynamicDscale', 1); %,...
-%             'stepmax', 10000);
+            'Dscale',Dscale,'jac','full', 'dynamicDscale', 1,...
+            'stepmax', 10000);
     
     fun_residual = ...
             @(XX) mhbm_aft_residual_pnlss_discrete(XX, model.A, ...
@@ -187,36 +195,39 @@ for iex=1:length(Fas)
 end
 
 %% Plot
-figure(1)
+fg1 = 10;
+fg2 = 20;
+
+figure(fg1)
 clf()
 
-figure(2)
+figure(fg2)
 clf()
 colos = distinguishable_colors(length(Fas));
 aa = gobjects(size(Fas));
 for iex=1:length(Fas)
-    figure(1)
+    figure(fg1)
     plot(Sols{iex}(:,1)/2/pi, Sols{iex}(:,2)/Fas(iex), '-', 'Color', colos(iex,:)); hold on
     plot(Solspnlss{iex}(:,1)/2/pi, Solspnlss{iex}(:,2)/Fas(iex), '.--', 'Color', colos(iex,:))
     
-    figure(2)
+    figure(fg2)
     aa(iex) = plot(Sols{iex}(:,1)/2/pi, Sols{iex}(:,3), '-', 'Color', colos(iex,:)); hold on
     plot(Solspnlss{iex}(:,1)/2/pi, Solspnlss{iex}(:,3), '.--', 'Color', colos(iex,:))
     legend(aa(iex), sprintf('F = %.2f', Fas(iex)));
 end
 
-figure(1)
+figure(fg1)
 xlim(sort([Ws We])/2/pi)
 xlabel('Forcing frequency $\omega$ (Hz)')
 ylabel('RMS response amplitude (m)')
-savefig(sprintf('./FIGURES/pnlssfrf_A%s_Amp.fig',Alevel))
-print(sprintf('./FIGURES/pnlssfrf_A%s_Amp.eps',Alevel), '-depsc')
+% savefig(sprintf('./FIGURES/pnlssfrf_A%s_Amp.fig',Alevel))
+% print(sprintf('./FIGURES/pnlssfrf_A%s_Amp.eps',Alevel), '-depsc')
 
-figure(2)
+figure(fg2)
 xlim(sort([Ws We])/2/pi)
 ylim([-180 0])
 xlabel('Forcing frequency $\omega$ (Hz)')
 ylabel('Response phase (degs)')
 legend(aa(1:end), 'Location', 'northeast')
-savefig(sprintf('./FIGURES/pnlssfrf_A%s_Phase.fig',Alevel))
-print(sprintf('./FIGURES/pnlssfrf_A%s_Phase.eps',Alevel), '-depsc')
+% savefig(sprintf('./FIGURES/pnlssfrf_A%s_Phase.fig',Alevel))
+% print(sprintf('./FIGURES/pnlssfrf_A%s_Phase.eps',Alevel), '-depsc')

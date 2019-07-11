@@ -94,7 +94,7 @@ model.T1 = NTrans;
 
 % amplitudes to loop over
 Avec = 80; %[10,40,80,100];
-Avec = [10 40 80 100];
+% Avec = [10 40 80 100];
 a_max = zeros(length(Om_vec),length(Avec));
 a_rms = zeros(length(Om_vec),length(Avec));
 ph_rs = zeros(length(Om_vec),length(Avec));
@@ -121,7 +121,7 @@ for A = Avec
 
         [Y, ~, X] = lsim(c2d(ss(ctmodel.A,ctmodel.B,ctmodel.C,ctmodel.D),1/fs),u,[],X0);
 %         [y, ~, X] = lsim(ss(ctmodel.A,ctmodel.B,ctmodel.C,ctmodel.D),u,T,X0);
-%         [y, ~, X] = lsim(ss(model.A,model.B,model.C,model.D,1/fs),u,[],X0);
+%         [Y, ~, X] = lsim(ss(model.A,model.B,model.C,model.D,1/fs),u,[],X0);
 %         [y, X] = fFilterNLSS(model,u,X0); % Modeled output signal
         X0 = X(end,:);
         Y = Y(Ptrans*Nt+1:end);
