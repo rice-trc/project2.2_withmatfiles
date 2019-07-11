@@ -18,9 +18,9 @@ srcdir = '../src/matlab';
 addpath(genpath(srcdir));
 
 savename = 'pnlss1';
-benchmark = 2;
+benchmark = 3;
 data.A = 10;
-data.name = 'up8_ms_full';
+data.name = 'up10_ms_full';
 % data.name = 'ode8_test';
 
 show_ms = false;
@@ -75,8 +75,9 @@ switch benchmark
         whichtermsy = 'empty';
     case 3
         PHIS = sys.PHI([sys.L/4; sys.L/2; 3/4*sys.L]);
+        PHIS = PHIS(:,1:2:end);
         nx = [2,3];
-        ny = [];
+        ny = [0];
         whichtermsx = 'statesonly'; % full
         whichtermsy = 'empty';
 end
@@ -179,7 +180,7 @@ freq_norm = (bla.lines-1)/Nt;
 % alternative: freq(lines)/fs
 % Uncomment for uniform weighting (= no weighting)
 % covGML = repmat(eye(1),[1 1 length(lines)]);
-%% NBNBNB. NO WEIGTHING. ADD AGAIN! covGML
+%% NBNBNB. NO WEIGTHING. ADD AGAIN! covGML ######################################
 [linmodels, subspacedata, ~]= fLoopSubSpace(freq_norm,bla.G,0,na,maxr,100);
 
 % Extract linear state-space matrices from best model on validation data

@@ -54,16 +54,18 @@ end
 %% load analytical parameters
 [L,rho,E,om,PHI,~,gam] = beams_for_everyone(setup,Nmod*2-1,thickness);
 PHI_L2 = PHI(L/2);
-PHI_L2 = PHI_L2(1:2:end);
 
 % load nl coefficient
 [p, E] = nlcoeff(modelname, Nmod, benchmark);
 
 if benchmark == 3
+    PHI_L2 = PHI_L2(1:2:end);
+    
     gam = gam(1:2:end);
     % om is needed for linear model, so we load the model directly
     load(modelname);
     om = model.omega;
+    
 end
 
 % Properties of the underlying linear system

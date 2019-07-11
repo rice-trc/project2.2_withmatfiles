@@ -3,7 +3,7 @@ function [fex ,ms] = multisine(f1, f2, N, A, Nt, ms_type, seed)
 % Used for time-domain multisine excitation, ie.
 %
 % phase = 2*pi*rand(N,1);
-% fex = @(t) ms.har'*A*cos(2*pi*(1:N)'*f0*t + phase) / sqrt(sum(ms.har));
+% fex = @(t) har'*A*cos(2*pi*(1:N)'*f0*t(:)' + phase) / sqrt(sum(har));
 % 
 if nargin == 7
     rng(seed)

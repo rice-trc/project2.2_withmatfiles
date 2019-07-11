@@ -42,10 +42,10 @@ n = Nmod;
 %% multisine, using time domain formulation
 
 R = 1;           % Realizations. (one for validation and one for testing)
-P = 5;           % Periods, we need to ensure steady state
+P = 1;           % Periods, we need to ensure steady state
 f1 = 5;          % low freq
 f2 = 400;        % high freq
-fs = 1500;       % 5*f2. Must be fs>2*f2. Nyquist freq, you know:)
+fs = 10000;       % 5*f2. Must be fs>2*f2. Nyquist freq, you know:)
 f0 = 1;          % freq resolution. 
 N = f2/f0;       % freq points
 A = 15;          % amplitude
@@ -53,7 +53,7 @@ Nt = fs/f0;      % time points per period
 % set the type of multisine
 ms_type = 'random_odd';  % can be 'full', 'odd' or 'random_odd'
 
-ms = multisine_lines(N,Nt, ms_type);
+% ms = multisine_lines(N,Nt, ms_type);
 
 q0 = zeros(n,1);
 u0 = zeros(n,1);
@@ -75,15 +75,15 @@ for r=1:R
     rng(r);
     % multisine in time domain (sum of sines)
     phase = 2*pi*rand(N,1);
-    fex = @(t) ms.har'*A*cos(2*pi*(1:N)'*f0*t + phase) / sqrt(sum(ms.har));
-
+%     fex = @(t) ms.har'*A*cos(2*pi*(1:N)'*f0*t + phase) / sqrt(sum(ms.har));
+    [fex, ~] = multisine(f1, f2, N, A, [], [], r);
     par = struct('M',M,'C',D,'K',K,'p',p,'E',E,'fex',fex, 'amp', Fex1);
-    [tout,Y] = ode45(@(t,y) sys(t,y, par), t,[q0;u0]);
+    Y = ode8(@(t,y) sys(t,y, par), t,[q0;u0]);
  
-    u(:,:,r) = reshape(fex(tout'), [Nt,P]);
+    u(:,:,r) = reshape(fex(t'), [Nt,P]);
     y(:,:,r,:) = reshape(Y(:,1:n), [Nt,P,n]);
     ydot(:,:,r,:) = reshape(Y(:,n+1:end), [Nt,P,n]);
-    phases(:,r) = phase;
+%     phases(:,r) = phase;
 end
 disp(['ode45 with multisine in time domain required ' num2str(toc) ' s.']);
 

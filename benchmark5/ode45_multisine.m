@@ -73,16 +73,15 @@ beam.D = inv(Vst')*diag(2*Dst.*Zetas_req)*inv(Vst);
 
 n = size(beam.M,1);
 %% multisine, using time domain formulation
-exc_lev = [0.1,1,5,10,15,20,30,40,50,60,70,80,90,100];
-exc_lev = [40,50,60,70,80,90,100];
+exc_lev = [1,5,10,15,30];
 f1 = 10;
 f2 = 100;
-N = 2e2;
-Nt = 2^12;
-upsamp = 1;
+N = 1e3;
+Nt = 2^13;
+upsamp = 4;
 
-R  = 1;            % Realizations. (one for validation and one for testing)
-P  = 1;           % Periods, we need to ensure steady state
+R  = 5;            % Realizations. (one for validation and one for testing)
+P  = 10;           % Periods, we need to ensure steady state
 
 Ntint = Nt*upsamp;  % Upsampled points per cycle
 f0 = (f2-f1)/N;     % frequency resolution -> smaller -> better
@@ -132,7 +131,7 @@ for r=1:R
     % multisine force signal
     [fex, MS{r}] = multisine(f1, f2, N, A, [], [], r);
     beam.Fex1 = Fex1*A;
-    [tout,Y] = ode45(@(t,y) odesys(t,y, fex, beam), t,[q0;u0]);
+    [tout,Y] = ode45(@(t,y) odesys(t,y, fex, beam), tint,[q0;u0]);
     % Y = ode8(@(t,y) odesys(t,y, fex, beam), tint,[q0;u0]);
  
     % no need to downsample u. Just use the downsampled time vector
@@ -147,7 +146,8 @@ for r=1:R
         y(:,:,r,:) = reshape(Y(:,1:n), [Nt,P,n]);
         ydot(:,:,r,:) = reshape(Y(:,n+1:end), [Nt,P,n]);
     end
-    if sum(any(isnan(y))) || sum(any(isnan(ydot)))
+    if sum(reshape(any(isnan(y)), [],1)) || ...
+            sum(reshape(any(isnan(ydot)), [],1))
         fprintf('Error: simulation exploded. Try increasing Nt or upsamp\n')
         break % don't quit, we still want to save data.
     end
