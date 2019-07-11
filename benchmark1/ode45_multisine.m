@@ -50,9 +50,9 @@ f2 = 700;        % high freq
 fs = 1200;       % 5*f2. Must be fs>2*f2. Nyquist freq, you know:)
 N  = 1e3;         % freq points
 f0 = (f2-f1)/N;
-A  = 35          % amplitude
+A  = 10          % amplitude
 
-Nt = 2^13;      % Time per cycle
+Nt = 2^15;      % Time per cycle
 fs = Nt*f0;     % Samping frequency
 
 Ntint = Nt*upsamp;
@@ -89,8 +89,8 @@ for r=1:R
     [fex, MS{r}] = multisine(f1, f2, N, A, [], [], r);
 
     par = struct('M',M,'C',D,'K',K,'p',p,'E',E,'fex',fex, 'amp', Fex1);
-%     [tout,Y] = ode45(@(t,y) sys(t,y, par), t,[q0;u0]);
-    Y = ode5(@(t,y) sys(t,y, par), tint, [q0;u0]);
+    [tout,Y] = ode45(@(t,y) sys(t,y, par), t,[q0;u0]);
+%     Y = ode5(@(t,y) sys(t,y, par), tint, [q0;u0]);
  
 	u(:,:,r) = reshape(fex(t'), [Nt,P]);
     if upsamp > 1
@@ -105,7 +105,7 @@ for r=1:R
 end
 disp(['ode45 with multisine in time domain required ' num2str(toc) ' s.']);
 
-save(sprintf('data/ode45_multisine_A%d.mat',A),'u','y','ydot','f1','f2','fs','freq',...
+save(sprintf('data/ode45_multisine_A%d_F%d.mat',A,fs),'u','y','ydot','f1','f2','fs','freq',...
     't','A','PHI_L2', 'MS', 'model', 'Nt','f0')
 
 %% show time series

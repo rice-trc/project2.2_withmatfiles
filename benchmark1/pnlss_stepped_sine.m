@@ -17,7 +17,7 @@ PHI_L2 = PHI(L/2);
 fname = ['beam_New_Design_Steel_analytical_5t_' ...
     num2str(thickness*1000) 'mm.mat'];
 [p, E] = nlcoeff(fname, Nmod);
-% E = 0;
+E = 0;
 
 % Properties of the underlying linear system
 M = eye(Nmod);
@@ -30,7 +30,7 @@ Fex1 = gam;
 
 %% state space
 
-fs_init = 2^18;
+fs_init = 2^12;
 fs = fs_init;
 
 % Continuous time model
@@ -87,7 +87,7 @@ P = 20;
 
 % amplitudes to loop over
 Avec = 80; %[10,40,80,100];
-Avec = [10 40 80 100];
+% Avec = [10 40 80 100];
 
 % periods to calculate max amp over.
 nper = 5;
@@ -98,25 +98,60 @@ nper = 5;
 Nt = 1e3;
 Ptrans = 150;
 nsim = fs/Nt;
-T = linspace(0, (P+Ptrans)/nsim, Nt*(P+Ptrans)+1); T(end) = [];
-y = zeros(Nt*P,R);
+T = linspace(0, (P+Ptrans)/nsim, Nt*(P+Ptrans)+1)'; T(end) = [];
 
 a_max = zeros(R,length(Avec));
+
+a_rms = zeros(R,length(Avec));
+ph_rs = zeros(R,length(Avec));
+
+a_rms_R = zeros(R,length(Avec));
+ph_rs_R = zeros(R,length(Avec));
+
 j = 1;
+Ntint = 2^4;
+Yint = zeros(Nt,1);
+y = zeros(Ntint*P,R);
 for A = Avec
     X0 = zeros(length(model.A),1);
     for i = 1:R
         Om = Om_vec(i);
         u = A*sin(2*pi*Om*T);
-        % [Y, ~, X] = lsim(ss(model.A,model.B,model.C,model.D,-1),u,[],X0);
-        [Y, X] = fFilterNLSS(model,u,X0); % Modeled output signal
+        [Y, ~, X] = lsim(ss(model.A,model.B,model.C,model.D,-1),u,[],X0);
+%         [Y, X] = fFilterNLSS(model,u,X0); % Modeled output signal
         % [Y, ~, X] = lsim(ss(ctmodel.A,ctmodel.B,ctmodel.C,ctmodel.D),u,T,X0);
         X0 = X(end,:);
         ymax = max(Y(end-nper*Nt+1:end));
         ymin = min(Y(end-nper*Nt+1:end));
         a_max(i,j) = abs(0.5*(ymax-ymin));
-        Y = Y(Ptrans*Nt+1:end);
-        y(:,i) = Y;
+        
+        % REGRESSION APPROACH
+        YR = [ones(size(T(end-(P*Nt)+1:end))) cos(2*pi*Om*T(end-(P*Nt)+1:end)) sin(2*pi*Om*T(end-(P*Nt)+1:end)) cos(2*2*pi*Om*T(end-(P*Nt)+1:end)) sin(2*2*pi*Om*T(end-(P*Nt)+1:end))];
+        TH = YR\Y(end-(P*Nt)+1:end);        
+        a_rms_R(i,j) = sqrt(TH(1)^2 + 0.5*sum(TH(2:end).^2));
+        ph_rs_R(i,j) = rad2deg(angle((TH(2)-1j*TH(3))./Ufint(2)));
+        
+        % INTERPOLATION APPROACH
+        % Interpolating response from grid T that is sampled at the fixed
+        % sampling rate "fs" to grid Tint that is sampled at the sampling
+        % rate Ntint*Om
+        Pint = floor(T(end)*Om);
+        Tint = linspace(0, Pint/Om, Ntint*Pint+1)';  Tint(end) = [];
+        Yint = interp1(T, Y, Tint, 'pchip');
+
+        % Removal of transients on interpolated response data
+        Yint = Yint(end-(P*Ntint)+1:end);
+        y(:, i) = Yint;
+        
+        Yrint = mean(reshape(Yint, Ntint, P), 2);
+        Urint = A*sin(2*pi*Om*Tint(1:Ntint));
+        
+        Ufint = fft(urint)/(Ntint/2); Ufint(1) = Ufint(1)/2;
+        Yfint = fft(Yrint)/(Ntint/2); Yfint(1) = Yfint(1)/2;
+        
+        a_rms(i,j) = sqrt(Yfint(1)^2 + 0.5*vecnorm(Yfint(2:Ntint/2)).^2);
+        ph_rs(i,j) = rad2deg(angle(Yfint(2)/Ufint(2)));
+%         ph_rs(i,j) = rad2deg(angle(Yfint(2)));
         if sum(any(isnan(Y)))
             fprintf('Error: simulation exploded. Try increase fs. r:%d\n',i)
             break % don't quit, we still want to save data.
@@ -128,22 +163,36 @@ end
 
 save(sprintf('data/stepped_sweep_dir%d',dir),'Om_vec','a_max')
 
-% plot max amplitudes -- poor mans frf
-figure
-plot(Om_vec, a_max, 'x-')
+% % plot max amplitudes -- poor mans frf
+% figure
+% plot(Om_vec, a_max, 'x-')
+
+% xlabel('Frequency (Hz)')
+% ylabel('Max amplitude (m)')
+
+% plot rms amplitudes -- rich mans frf
+figure(1)
+clf()
+plot(Om_vec, a_rms, '.-', Om_vec, a_rms_R, 'x-')
 xlabel('Frequency (Hz)')
-ylabel('Max amplitude (m)')
+ylabel('RMS amplitude (m)')
 
+% plot phase
+figure(2)
+clf()
+plot(Om_vec, ph_rs, '.-', Om_vec, ph_rs_R, 'x-')
+xlabel('Frequency (Hz)')
+ylabel('Response relative phase (degs)')
 
-% Plot time signal
-t = linspace(0, (P)/nsim, Nt*(P)+1); t(end) = [];
-figure
-hold on
-for i = 1:R
-    plot(t, y(:,i))
-end
-xlabel('Time (s)')
-ylabel('Amplitude (m)')
+% % Plot time signal
+% t = linspace(0, (P)/nsim, Nt*(P)+1); t(end) = [];
+% figure
+% hold on
+% for i = 1:R
+%     plot(t, y(:,i))
+% end
+% xlabel('Time (s)')
+% ylabel('Amplitude (m)')
 
 
 %% Simulate with changing fs, keep Nt and Om constant. Integer periods

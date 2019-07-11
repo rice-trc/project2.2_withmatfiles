@@ -20,8 +20,9 @@ figpath = './fig/';
 addnoise = false;
 savefig = true;
 
-Alevel = 35;
-load(sprintf('data/ode45_multisine_A%d.mat',Alevel))
+Alevel = 25;
+fs = 16384;
+load(sprintf('data/ode45_multisine_A%d_F%d.mat',Alevel,fs))
 
 % load('ode45A21.mat')
 freq = (0:Nt-1)*f0;   % frequency content
@@ -141,7 +142,7 @@ whichtermsx = 'statesonly';
 whichtermsy = 'empty';
 
 % Settings Levenberg-Marquardt optimization
-MaxCount = 100;
+MaxCount = 200;
 lambda = 100;
 
 % Choose model order
@@ -214,7 +215,7 @@ fprintf('e_est_lin:\t %0.3e\t e_est_nl:\t %0.3e\n', err(1,:))
 fprintf('e_val_lin:\t %0.3e\t e_val_nl:\t %0.3e\n', err(2,:))
 fprintf('e_test_lin:\t %0.3e\t e_test_nl:\t %0.3e\n',err(3,:))
 
-save(sprintf('./data/pnlssout_A%d.mat',Alevel), 'modellinest', 'model')
+save(sprintf('./data/pnlssout_A%d_F%d.mat',Alevel,fs), 'modellinest', 'model','fs')
 
 %% Results
 

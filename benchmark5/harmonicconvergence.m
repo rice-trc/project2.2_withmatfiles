@@ -26,7 +26,6 @@ Fex1 = zeros(beam.n, 1);  Fex1(fdof) = 1;
 Nnl = 4;
 dir = 'trans';
 kn  = 1.3e6;
-muN = 1;
 gap = 1e-3;
 add_nonlinear_attachment(beam, Nnl, dir, 'unilateralspring', ...
     'stiffness', kn, 'gap', gap);
