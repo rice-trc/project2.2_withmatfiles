@@ -8,7 +8,9 @@ clearvars;
 close all;
 clc;
 
-srcpath = '../src/nlvib';
+srcpath = '../../src/nlvib';
+addpath(genpath(srcpath));
+srcpath = '../../src/simulink';
 addpath(genpath(srcpath));
 srcpath = '../';
 addpath(genpath(srcpath));
@@ -104,7 +106,7 @@ N=2*3*H+1;
 analysis = 'NMA';
 
 imod = 1;           % mode to be analyzed
-log10a_s = -6;    % start vibration level (log10 of modal mass)
+log10a_s = -5.2;    % start vibration level (log10 of modal mass)
 log10a_e = -3.5;       % end vibration level (log10 of modal mass)
 inorm = 1;          % coordinate for phase normalization
 
@@ -152,8 +154,6 @@ x0beam = 0; % intial condition beam integrator
 x0vco = 0; % initial condition VCO integrator
 
 % PLL controller
-P = 5; % proportional gain
-I = 50; % integrator gain
 omega_0 = om_lin; % center frequency
 a = 0.02*2*pi; % low pass filter
 
@@ -215,6 +215,12 @@ k_stinger = (E_stinger*A_stinger)/l_stinger;
 %%
 switch Shaker
     case 'no' % without Shaker
+        
+        % PLL controller
+        P = 0; % proportional gain
+        I = 50; % integrator gain
+        D = 0; % derivative gain
+        
         time_interval = [0.5 10 0.5 30 0.5 40 0.5 50 0.5 70 0.5 70];
         simin.time = zeros(1,13);
         for i = 1:12
@@ -231,13 +237,19 @@ switch Shaker
         disp('Simulation of experiment succeeded')
         
     case 'yes' % with Shaker
-        time_interval = [0.5 15 0.5 15 0.5 15 0.5 15 0.5 15 0.5 15];
+        
+        % PLL controller
+        P = 800; % proportional gain
+        I = 1500; % integrator gain
+        D = 100; % derivative gain
+        
+        time_interval = [0.2 5 0.2 5 0.2 5 0.2 5 0.2 6 1 6];
         simin.time = zeros(1,13);
         for i = 1:12
             simin.time(i+1) = simin.time(i)+time_interval(i);
         end
         simtime = simin.time(end);
-        simin.signals.values = [0 1 1 2 2 4 4 6 6 8 8 10 10]';
+        simin.signals.values = [0 5 5 20 20 40 40 70 70 100 100 120 120]';
         simin.signals.dimensions = 1;
         
         % simulation of experiment
@@ -247,7 +259,6 @@ switch Shaker
         disp('Simulation of experiment succeeded')
 end
 
-%%
 simulation.disp = displacement.signals.values;
 simulation.tvals = displacement.time;
 simulation.Fvals = excitation_force.signals.values;
@@ -282,7 +293,7 @@ res_damp = nonlinear_damping( res_LMA, res_bb);
 names = [fieldnames(res_bb); fieldnames(res_damp)];
 res_NMA = cell2struct([struct2cell(res_bb); struct2cell(res_damp)], names, 1);
 
-%% Compare modal characteristics for experiment and Harmonic Balance methods
+% Compare modal characteristics for experiment and Harmonic Balance methods
 
 % Modal frequency vs. amplitude
 figure;

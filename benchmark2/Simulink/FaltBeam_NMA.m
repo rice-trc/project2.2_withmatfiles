@@ -1,6 +1,6 @@
 %========================================================================
 % DESCRIPTION: 
-% Investigation of the dynamics of a clamped clamped beam
+% Investigation of the dynamics of a duffing oscillator
 % nonlinearity using NLvib and simulated measurements of the backbone
 %========================================================================
 
@@ -8,10 +8,14 @@ clearvars;
 close all;
 clc;
 
-srcpath = '../src/nlvib';
+srcpath = '../../src/nlvib';
 addpath(genpath(srcpath));
 srcpath = '../';
 addpath(genpath(srcpath));
+
+set(0,'defaultAxesTickLabelInterpreter', 'default');
+set(0,'defaultTextInterpreter','latex'); 
+set(0,'DefaultLegendInterpreter','latex'); 
 
 %% Define system
 
@@ -60,14 +64,6 @@ E=zeros(sum(cumsum(1:Nmod)),Nmod);
 
 for rr = 1:Nmod
     ctr = 1;
-%         for jj = 1:Nmod
-%             for kk = jj:Nmod
-%                 % quadratic coeffs
-%                 E(ctr,rr) = model.a(jj,kk,rr);
-%                 ctr = ctr+1;
-%             end
-%         end
-%         ctr = 1;
     for jj = 1:Nmod
         for kk = jj:Nmod
             for ll = kk:Nmod
@@ -100,7 +96,7 @@ N=2*3*H+1;
 analysis = 'NMA';
 
 imod = 1;           % mode to be analyzed
-log10a_s = -5;    % start vibration level (log10 of modal mass)
+log10a_s = -6;    % start vibration level (log10 of modal mass)
 log10a_e = -2;       % end vibration level (log10 of modal mass)
 inorm = 1;          % coordinate for phase normalization
 
@@ -138,10 +134,10 @@ end
 
 a_w_L_2_NMA = sqrt([1 0.5*ones(1,2*H)]*w_L_2_NMA_sum.^2); % compute amplitude
 
-
 %% Setup simulated experiments
 
-exc_node = 1; % node for external excitation
+Shaker = 'no'; % 'yes', 'no'
+exc_node = [1 2 3 4 5]; % node for external excitation
 simtime = 30;   % Simulation time in seconds
 phase_lag = 90; % phase lag in degree
 
@@ -151,29 +147,29 @@ x0vco = 0; % initial condition VCO integrator
 % PLL controller
 P = 5; % proportional gain
 I = 50; % integrator gain
-omega_0 = OM2; % center frequency
+omega_0 = om_lin(imod); % center frequency
 a = 0.02*2*pi; % low pass filter
 
 % state-space model
 A = [zeros(n,n), eye(n);
-  -oscillator.M\oscillator.K, -oscillator.M\oscillator.D];
+  -beam.M\beam.K, -beam.M\beam.D];
 
 % localize nonlinearity
-loc_nl = 1;
-loc_exc = 1;
+loc_nl = ones(n,1);
+loc_exc = ones(n,1);
 
 % input matrices
-B = [zeros(n,1);oscillator.M\loc_exc];
+B = zeros(2*n,2*n);
+B(n+1:end,1:n) = inv(beam.M);
 % input matrix for nonlinear force
-B_nl = [zeros(n,1);oscillator.M\loc_nl];
-NL_coeff = oscillator.nonlinear_elements{1}.coefficients;
+B_nl = B;
 
 % localization matrices
 T_nl = zeros(1,2*n);
-T_nl(1) = 1;
+T_nl(1:n) = 1;
 
 T_exc = zeros(1,2*n);
-T_exc(1) = 1;
+T_exc(2*(exc_node-1-1)+1) = 1;
 
 T_disp = [eye(n,n) zeros(n,n)];
 
@@ -209,19 +205,48 @@ A_stinger = pi*2^2; % in mm
 l_stinger = 0.0200; %in m
 k_stinger = (E_stinger*A_stinger)/l_stinger;
 
-%% simulation of experiment
+%%
+switch Shaker
+    case 'no' % without Shaker
+        time_interval = [0.5 10 0.5 30 0.5 40 0.5 50 0.5 70 0.5 70];
+        simin.time = zeros(1,13);
+        for i = 1:12
+            simin.time(i+1) = simin.time(i)+time_interval(i);
+        end
+        simtime = simin.time(end);
+        simin.signals.values = [0 0.5 0.5 2 2 4 4 6 6 15 15 20 20]';
+        simin.signals.dimensions = 1;
+        
+        % simulation of experiment
+        disp('---------------------------------------------------')
+        disp('Simulation of experiment started')
+        sim('Duffing_force')
+        disp('Simulation of experiment succeeded')
+        
+    case 'yes' % with Shaker
+        time_interval = [0.5 15 0.5 15 0.5 15 0.5 15 0.5 15 0.5 15];
+        simin.time = zeros(1,13);
+        for i = 1:12
+            simin.time(i+1) = simin.time(i)+time_interval(i);
+        end
+        simtime = simin.time(end);
+        simin.signals.values = [0 1 1 2 2 4 4 6 6 8 8 10 10]';
+        simin.signals.dimensions = 1;
+        
+        % simulation of experiment
+        disp('---------------------------------------------------')
+        disp('Simulation of experiment started')
+        sim('Duffing_voltage')
+        disp('Simulation of experiment succeeded')
+end
 
-disp('---------------------------------------------------')
-disp('Simulation of experiment started')
-    sim('Duffing_Oscillator')
-disp('Simulation of experiment succeeded')
-
-simulation.disp = displacement.signals.values(:,1:2:end);
+%%
+simulation.disp = displacement.signals.values;
 simulation.tvals = displacement.time;
 simulation.Fvals = excitation_force.signals.values;
 simulation.freqvals = exc_freq.signals.values;
 
-simulation.Signalbuilder = [0 0.5 5 5.5 10 10.5 15 15.5 20 20.5 25 25.5 30];
+simulation.Signalbuilder = simin.time';
 
 %% Analysis of simualted measurements
 
@@ -230,18 +255,18 @@ opt.NMA.Fs = 5000; % sample frequency in Hz
 opt.NMA.var_step = 1; % 0 for constant step size, 1 for variable step size
 opt.NMA.periods = 50; % number of analyzed periods
 
-opt.NMA.n_harm = 10; % number of harmonics considered
+opt.NMA.n_harm = H; % number of harmonics considered
 opt.NMA.min_harm_level = 0.015; % minimal level relative to highest peak
 opt.NMA.eval_DOF = exc_node; % DOF for analysis
 
 % number of modes considered in linear EMA
 modes_considered = 1;
-linear_EMA_sensors = 1:2:n; % only "measure" in translational direction
+linear_EMA_sensors = 1;
 
 % results linear modal analysis
-res_LMA.freq = om_fixed(modes_considered)/2/pi;
+res_LMA.freq = om_lin(modes_considered)/2/pi;
 res_LMA.damp = D(modes_considered);
-res_LMA.Phi = PHI_fixed(linear_EMA_sensors,modes_considered);
+res_LMA.Phi = PHI_lin(linear_EMA_sensors,modes_considered);
 res_LMA.modes_considered = modes_considered;
 
 % results nonlinear modal analysis
@@ -254,15 +279,15 @@ res_NMA = cell2struct([struct2cell(res_bb); struct2cell(res_damp)], names, 1);
 
 % Modal frequency vs. amplitude
 figure;
-semilogx(abs(Y_HB_1(2*(exc_node-1-1)+1,:)),om_HB/om_fixed(imod),'g-');
+semilogx(abs(Y_HB_1),om_HB/om_lin(imod),'g-', 'LineWidth', 2);
 hold on
 semilogx(abs(res_NMA.Psi_tilde_i(opt.NMA.eval_DOF,:)),res_NMA.om_i/(res_LMA.freq(1)*2*pi),'k.','MarkerSize',10)
-xlabel('amplitude in m'); ylabel('\omega/\omega_0')
+xlabel('amplitude in m'); ylabel('$\omega/\omega_0$')
 legend('NMA with NLvib','simulated experiment')
 
 % Modal damping ratio vs. amplitude
 figure; 
-semilogx(abs(Y_HB_1(2*(exc_node-1-1)+1,:)),del_HB*1e2,'g-');
+semilogx(abs(Y_HB_1),del_HB*1e2,'g-', 'LineWidth', 2);
 hold on
 semilogx(abs(res_NMA.Psi_tilde_i(opt.NMA.eval_DOF,:)),abs(res_NMA.del_i_nl)*100,'k.','MarkerSize',10)
 xlabel('amplitude in m'); ylabel('modal damping ratio in %')
