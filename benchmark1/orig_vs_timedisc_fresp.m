@@ -79,7 +79,7 @@ end
 % ctmodel.E = [[0; -M\E] zeros(2, 9)];
 
 Ntd = 2^6;
-fs = 2^12;
+fs = 2^28;
 
 % Continuous time model
 ctmodel.A = [0 1;
@@ -145,11 +145,10 @@ for iex=1:length(exc_lev)
             'predictor','tangent','parametrization','arc_length', ...
             'Dscale',Dscale,'jac','full', 'dynamicDscale', 1);
 
-    Precond = 1e0;
     fun_residual = ...
             @(XX) mhbm_aft_residual_pnlss_discrete(XX, dtmodel.A, ...
             dtmodel.B, dtmodel.E, dtmodel.xpowers, 1/fs, ...
-            Uc*Ff, H, Ntd, Precond);
+            Uc*Ff, H, Ntd);
     Cfun_postprocess = {@(varargin) ...
             mhbm_post_amplitude_pnlss(varargin{:},Uc*Ff,dtmodel.C,dtmodel.D,dtmodel.F,dtmodel.ypowers,H,Ntd)};
     fun_postprocess = @(Y) mhbm_postprocess(Y,fun_residual,Cfun_postprocess);
@@ -159,7 +158,7 @@ for iex=1:length(exc_lev)
     Solspnlss{iex} = [Xpnlss{iex}(end,:)' [Sol.Apv]' [Sol.Aph1]'];
 end
 
-%% Plot
+% %% Plot
 fg1 = 100;
 fg2 = 200;
 
@@ -182,17 +181,18 @@ for iex=1:length(exc_lev)
 end
 
 figure(fg1)
-set(gca,'Yscale', 'log')
+set(gca,'Yscale', 'linear')
 xlim(sort([Om_s Om_e])/2/pi)
-xlabel('Forcing frequency \omega (Hz)')
+xlabel('Forcing frequency $\omega$ (Hz)')
 ylabel('RMS response amplitude (m)')
 % savefig(sprintf('./fig/pnlssfrf_A%d_Amp.fig',Alevel))
-% print(sprintf('./fig/pnlssfrf_A%d_Amp.eps',Alevel), '-depsc')
+print(sprintf('./fig/dssex_frf_Amp_fs%d.eps',fs), '-depsc')
 
 figure(fg2)
 xlim(sort([Om_s Om_e])/2/pi)
-xlabel('Forcing frequency \omega (Hz)')
+xlabel('Forcing frequency $\omega$ (Hz)')
 ylabel('Response phase (degs)')
 legend(aa(1:end), 'Location', 'northeast')
+% legend(aa(1:end), 'Location', 'best')
 % savefig(sprintf('./fig/pnlssfrf_A%d_Phase.fig',Alevel))
-% print(sprintf('./fig/pnlssfrf_A%d_Phase.eps',Alevel), '-depsc')
+print(sprintf('./fig/dssex_frf_Phase_fs%d.eps',fs), '-depsc')

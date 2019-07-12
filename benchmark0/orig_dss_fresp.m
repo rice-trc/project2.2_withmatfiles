@@ -81,7 +81,7 @@ end
 Ntd = 2^6;
 % samples_per_pseudoperiod = 1e4; Om_ref = (Om_e+Om_s)/2;
 % fs = Om_ref/(2*pi)*samples_per_pseudoperiod;
-fs = 2^12;
+fs = 2^18;
 
 % Continuous time model
 ctmodel.A = [0 1;
@@ -184,17 +184,15 @@ end
 figure(fg1)
 set(gca,'Yscale', 'log')
 xlim(sort([Om_s Om_e])/2/pi)
-xlabel('Forcing frequency \omega (Hz)')
+xlabel('Forcing frequency $\omega$ (Hz)')
 ylabel('RMS response amplitude (m)')
 % savefig(sprintf('./fig/pnlssfrf_A%d_Amp.fig',Alevel))
-% print(sprintf('./fig/pnlssfrf_A%d_Amp.eps',Alevel), '-depsc')
-print('./fig/amp.png','-dpng')
+print(sprintf('./fig/dssex_frf_Amp_fs%d.eps',fs), '-depsc')
 
 figure(fg2)
 xlim(sort([Om_s Om_e])/2/pi)
-xlabel('Forcing frequency \omega (Hz)')
+xlabel('Forcing frequency $\omega$ (Hz)')
 ylabel('Response phase (degs)')
 legend(aa(1:end), 'Location', 'northeast')
 % savefig(sprintf('./fig/pnlssfrf_A%d_Phase.fig',Alevel))
-% print(sprintf('./fig/pnlssfrf_A%d_Phase.eps',Alevel), '-depsc')
-print('./fig/phase.png','-dpng')
+print(sprintf('./fig/dssex_frf_Amp_fs%d.eps',fs), '-depsc')
