@@ -1,7 +1,11 @@
 clear; clc;
-close all; 
-srcpath = '../src/nlvib';
+close all;
+
+srcpath = '../../src/nlvib';
 addpath(genpath(srcpath));
+srcpath = '../';
+addpath(genpath(srcpath));
+
 set(0,'defaultAxesTickLabelInterpreter', 'default');
 set(0,'defaultTextInterpreter','latex'); 
 set(0, 'DefaultLegendInterpreter', 'latex'); 
