@@ -50,8 +50,9 @@ PsiMat = NLCOEF_TFMMATS(inv(Tp), Xpowers);
 
 Epn = (Tp*pnlssmodel.model.E*PsiMat)*fs
 
-log10(linmodel.E)
-log10(abs(Epn))
+Elin = log10(linmodel.E)
+Epnl = log10(abs(Epn))
+Xpowers'
 
 %% Converting continuous time model to continuous time modal doman and then discretized
 
