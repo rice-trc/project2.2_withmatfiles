@@ -10,14 +10,12 @@ addpath('../src/nlvib/SRC/MechanicalSystems/')
 % Fundamental parameters
 Dmod = [.38 .12 .09 .08 .08]*.01;
 Nmod = 1;
-setup = 'New_Design_Steel';
+setup = './data/New_Design_Steel';
 thickness = .001;
 [L,rho,E,om,PHI,~,gam] = beams_for_everyone(setup,Nmod,thickness);
 PHI_L2 = PHI(L/2);
 
-% load nonlinear coefficients (can be found e.g. analytically)
-fname = ['beam_New_Design_Steel_analytical_5t_' ...
-    num2str(thickness*1000) 'mm.mat'];
+% Set non-linear coefficients to 0
 p = 3;
 E = 0;
 

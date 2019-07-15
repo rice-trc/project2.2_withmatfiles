@@ -12,7 +12,7 @@ addpath('../src/matlab/')
 % Fundamental parameters
 Dmod = [.38 .12 .09 .08 .08]*.01;
 Nmod = 1;
-setup = 'New_Design_Steel';
+setup = './data/New_Design_Steel';
 thickness = .001;
 [L,rho,E,om,PHI,~,gam] = beams_for_everyone(setup,Nmod,thickness);
 PHI_L2 = PHI(L/2);
@@ -23,7 +23,7 @@ D = diag(2*Dmod(1:Nmod).*om(:));
 K = diag(om.^2);
 
 % load nonlinear coefficients (can be found e.g. analytically)
-fname = ['beam_New_Design_Steel_analytical_5t_' ...
+fname = ['./data/beam_New_Design_Steel_analytical_5t_' ...
     num2str(thickness*1000) 'mm.mat'];
 [p, E] = nlcoeff(fname, Nmod);
 
@@ -50,9 +50,9 @@ f2 = 700;        % high freq
 fs = 1200;       % 5*f2. Must be fs>2*f2. Nyquist freq, you know:)
 N  = 1e3;         % freq points
 f0 = (f2-f1)/N;
-A  = 10          % amplitude
+A  = 100000          % amplitude
 
-Nt = 2^15;      % Time per cycle
+Nt = 2^13;      % Time per cycle  (2^13 for 4096; 2^15 for 16384)
 fs = Nt*f0;     % Samping frequency
 
 Ntint = Nt*upsamp;
