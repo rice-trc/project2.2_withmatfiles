@@ -10,13 +10,13 @@ addpath('../src/nlvib/SRC/MechanicalSystems/')
 % Fundamental parameters
 Dmod = [.38 .12 .09 .08 .08]*.01;
 Nmod = 1;
-setup = 'New_Design_Steel';
+setup = './data/New_Design_Steel';
 thickness = .001;
 [L,rho,E,om,PHI,~,gam] = beams_for_everyone(setup,Nmod,thickness);
 PHI_L2 = PHI(L/2);
 
 % load nonlinear coefficients (can be found e.g. analytically)
-fname = ['beam_New_Design_Steel_analytical_5t_' ...
+fname = ['./data/beam_New_Design_Steel_analytical_5t_' ...
     num2str(thickness*1000) 'mm.mat'];
 [p, E] = nlcoeff(fname, Nmod);
 
@@ -73,8 +73,9 @@ end
 
 %% Compute frequency response of PNLSS identified model
 Alevel = 35;
-load(sprintf('./data/ode45_multisine_A%d.mat',Alevel), 'fs', 'PHI_L2');
-load(sprintf('./data/pnlssout_A%d.mat',Alevel),'model');
+fs = 4096;
+load(sprintf('./data/ode45_multisine_A%d_F%d.mat',Alevel,fs), 'PHI_L2');
+load(sprintf('./data/pnlssmodel_A%d_F%d.mat',Alevel,fs),'model');
 
 Ndpnlss = size(model.A,1);
 
