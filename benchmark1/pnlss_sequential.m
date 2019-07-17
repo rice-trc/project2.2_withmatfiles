@@ -131,27 +131,40 @@ W = [];
 %% Sequential PNLSS
 errormeasures = cell(size(Alevels));
 seqmodels = cell(size(Alevels));
-modelguess = modellintest;
+modelguess = modellinest;
 for ia=1:length(Alevels)
     load(sprintf('./data/ode45_multisine_A%d_F%d.mat',Alevels(ia), fs), 'u', 'y');
     
-    % Kick off transients
-    u = u(:, Ptr:end, 1:R);
-    y = y(:, Ptr:end, 1:R);
+    [Nt, P, R, n] = size(y);
+    Ptr = 6;
+    P = P-Ptr;
     
     % Separate data
     utest = u(:, end, end);  utest = utest(:);
     ytest = y(:, end, end);  ytest = ytest(:);
 
-    uval = u(:, end, R-1);  uval = uval(:);
-    yval = y(:, end, R-1);  yval = yval(:);
+    uval = u(:, end, end-1);  uval = uval(:);
+    yval = y(:, end, end-1);  yval = yval(:);
+    % kick off transient
+    R = R-2;
+    u = u(:, Ptr:end, 1:R);
+    y = y(:, Ptr:end, 1:R);
+    modelguess.T1 = [Ntrans 1+(0:Nt:(R-1)*Nt)];
     
     u = permute(u, [1,4,3,2]);  % N x m x R x P
     y = permute(y, [1,4,3,2]);  % N x p x R x P
     covY = fCovarY(y);  % Noise covariance (Frequency domain)
     
-    u = mean(u, 4);
-    y = mean(y, 4);
+    if Alevels(ia)<=35
+        u = mean(u, 4);
+        y = mean(y, 4);
+    else
+        R = 1;
+        u = u(:, :, 1, 1);
+        y = y(:, :, 1, 1);
+
+        modelguess.T1 = [Ntrans 1+(0:Nt:(R-1)*Nt)];
+    end
     m = size(u, 2);
     p = size(y, 2);
     uc = u(:);
@@ -172,7 +185,7 @@ for ia=1:length(Alevels)
 
     % PNLSS optimization
     [~, y_mod, models_pnlss] = fLMnlssWeighted(uc, yc, modelguess, MaxCount, W, lambda);
- 	[~, y_mod, models_pnlss] = fLMnlssWeighted(uc, yc, models_pnlss(end-5), MaxCount, W, lambda);
+%  	[~, y_mod, models_pnlss] = fLMnlssWeighted(uc, yc, models_pnlss(end-5), MaxCount, W, lambda);
     err_nlest = yc-y_mod;
     
     % Choose best model from PNLSS (using validation data)

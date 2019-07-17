@@ -72,10 +72,11 @@ for iex=1:length(exc_lev)
 end
 
 %% Compute frequency response of PNLSS identified model
-Alevel = 35;
+Alevel = 1000;
 fs = 4096;
 load(sprintf('./data/ode45_multisine_A%d_F%d.mat',Alevel,fs), 'PHI_L2');
 load(sprintf('./data/pnlssmodel_A%d_F%d.mat',Alevel,fs),'model');
+% load(sprintf('./data/pnlssout_A%d_F%d.mat',Alevel,fs),'model');
 
 Ndpnlss = size(model.A,1);
 
@@ -84,7 +85,7 @@ Uc = zeros(H+1,1);
 Uc(2) = 1;
 
 ds = 1*2*pi;
-dsmin = 0.001*2*pi;
+dsmin = 0.0001*2*pi;
 dsmax = 100*2*pi;
 
 Xpnlss = cell(length(exc_lev),1);
@@ -97,11 +98,11 @@ for iex=1:length(exc_lev)
     X0 = [zeros(length(model.A),1);real(Xc);-imag(Xc);....
             zeros(2*(H-1)*length(model.A),1)];                  % initial guess
     
-	TYPICAL_x = 1e0*Ff/(2*D*M*om^2);
+	TYPICAL_x = 1e1*Ff/(2*D*M*om^2);
     Dscale = [TYPICAL_x*ones(length(X0),1);Om_s];
     Sopt = struct('ds',ds,'dsmin',dsmin,'dsmax',dsmax,'flag',1,'stepadapt',1, ...
             'predictor','tangent','parametrization','arc_length', ...
-            'Dscale',Dscale,'jac','full', 'dynamicDscale', 1);
+            'Dscale',Dscale,'jac','full', 'dynamicDscale', 1, 'stepmax', 2000);
 
     fun_residual = ...
             @(XX) mhbm_aft_residual_pnlss_discrete(XX, model.A, model.B, model.E, model.xpowers, 1/fs, Uc*Ff, H, Ntd);
@@ -115,7 +116,7 @@ for iex=1:length(exc_lev)
 end
 
 
-%% Plot
+% %% Plot
 figure(Alevel)
 clf()
 
@@ -126,7 +127,7 @@ aa = gobjects(size(exc_lev));
 for iex=1:length(exc_lev)
     figure(Alevel)
     plot(Sols{iex}(:,1)/2/pi, Sols{iex}(:,2), '-', 'Color', colos(iex,:)); hold on
-    plot(Solspnlss{iex}(:,1)/2/pi, Solspnlss{iex}(:,2), '.--', 'Color', colos(iex,:))
+    plot(Solspnlss{iex}(:,1)/2/pi, PHI_L2*Solspnlss{iex}(:,2), '.--', 'Color', colos(iex,:))
     
     figure(Alevel+1)
     aa(iex) = plot(Sols{iex}(:,1)/2/pi, Sols{iex}(:,3), '-', 'Color', colos(iex,:)); hold on
@@ -135,6 +136,7 @@ for iex=1:length(exc_lev)
 end
 
 figure(Alevel)
+% set(gca, 'YScale', 'log')
 xlim(sort([Om_s Om_e])/2/pi)
 xlabel('Forcing frequency \omega (Hz)')
 ylabel('RMS response amplitude (m)')
