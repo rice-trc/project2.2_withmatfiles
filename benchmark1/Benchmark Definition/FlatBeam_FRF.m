@@ -8,13 +8,13 @@ addpath(genpath(srcpath));
 
 set(0,'defaultAxesTickLabelInterpreter', 'default');
 set(0,'defaultTextInterpreter','latex'); 
-set(0, 'DefaultLegendInterpreter', 'latex'); 
+set(0,'DefaultLegendInterpreter', 'latex'); 
 
 %% Define system
 
 % Fundamental parameters
 Dmod = .38*.01;
-Nmod = 1;
+Nmod = 5;
 setup = 'New_Design_Steel';
 thickness = .001;
 [L,rho,E,om,PHI,~,gam] = beams_for_everyone(setup,Nmod,thickness);
@@ -95,7 +95,7 @@ Ntd = 1e3;
 
 % Analysis parameters
 Om_s = om(1)*.2;      % start frequency
-Om_e = 3*om(1);     % end frequency
+Om_e = 3*om(1);       % end frequency
 
 % Excitation levels
 exc_lev = [10,40,60,80,100];

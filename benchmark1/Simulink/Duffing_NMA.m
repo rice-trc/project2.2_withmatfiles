@@ -86,7 +86,7 @@ for rr = 1:Nmod
 end
 
 % Fundamental harmonic of external forcing
-Fex1 = gam;
+Fex1 = PHI_L_2;
 
 % Define oscillator as system with polynomial stiffness nonlinearities
 oscillator = System_with_PolynomialStiffnessNonlinearity(M,D,K,p,E,Fex1);
@@ -168,17 +168,17 @@ loc_exc = 1;
 % input matrices
 B = [zeros(n,1);oscillator.M\loc_exc];
 % input matrix for nonlinear force
-B_nl = [zeros(n,1);oscillator.M\loc_nl];
 NL_coeff = oscillator.nonlinear_elements{1}.coefficients;
+B_nl = [zeros(n,1);oscillator.M\loc_nl]*NL_coeff;
 
 % localization matrices
 T_nl = zeros(1,2*n);
 T_nl(1) = 1;
 
 T_exc = zeros(1,2*n);
-T_exc(1) = 1;
+T_exc(1) = PHI_L_2;
 
-T_disp = [eye(n,n) zeros(n,n)];
+T_disp = [eye(n,n) zeros(n,n)]*PHI_L_2;
 
 %% shaker model
 
@@ -212,7 +212,7 @@ A_stinger = pi*2^2; % in mm
 l_stinger = 0.0200; %in m
 k_stinger = (E_stinger*A_stinger)/l_stinger;
 
-%%
+%% switch Shaker
 switch Shaker
     case 'no' % without Shaker
         
@@ -221,41 +221,41 @@ switch Shaker
         I = 50; % integrator gain
         D = 0; % derivative gain
         
-        time_interval = [0.5 10 0.5 30 0.5 40 0.5 50 0.5 70 0.5 70];
+        time_interval = [0.2 10 0.2 20 0.2 30 0.2 40 0.2 50 0.2 50];
         simin.time = zeros(1,13);
         for i = 1:12
             simin.time(i+1) = simin.time(i)+time_interval(i);
         end
         simtime = simin.time(end);
-        simin.signals.values = [0 0.5 0.5 2 2 4 4 6 6 15 15 20 20]';
+        simin.signals.values = 0.005*[0 3 3 10 10 25 25 60 60 100 100 160 160]';
         simin.signals.dimensions = 1;
         
         % simulation of experiment
         disp('---------------------------------------------------')
         disp('Simulation of experiment started')
-        sim('Duffing_force')
+        sim('Duffing_without_Shaker')
         disp('Simulation of experiment succeeded')
         
     case 'yes' % with Shaker
         
         % PLL controller
-        P = 800; % proportional gain
-        I = 1500; % integrator gain
-        D = 100; % derivative gain
+        P = 10; % proportional gain
+        I = 50; % integrator gain
+        D = 0.01; % derivative gain
         
-        time_interval = [0.2 5 0.2 5 0.2 5 0.2 5 0.2 6 1 6];
+        time_interval = [0.1 5 0.1 15 0.1 15 0.1 15 0.1 15 0.1 15];
         simin.time = zeros(1,13);
         for i = 1:12
             simin.time(i+1) = simin.time(i)+time_interval(i);
         end
         simtime = simin.time(end);
-        simin.signals.values = [0 5 5 20 20 40 40 70 70 100 100 120 120]';
+        simin.signals.values = 30*[0 5 5 20 20 40 40 100 100 180 180 270 270]';
         simin.signals.dimensions = 1;
         
         % simulation of experiment
         disp('---------------------------------------------------')
         disp('Simulation of experiment started')
-        sim('Duffing_voltage')
+        sim('Duffing_shaker')
         disp('Simulation of experiment succeeded')
 end
 
@@ -267,7 +267,6 @@ simulation.freqvals = exc_freq.signals.values;
 simulation.Signalbuilder = simin.time';
 
 %% Analysis of simualted measurements
-
 opt.NMA.exc_DOF = exc_node; % index of drive point
 opt.NMA.Fs = 5000; % sample frequency in Hz
 opt.NMA.var_step = 1; % 0 for constant step size, 1 for variable step size
@@ -297,7 +296,7 @@ res_NMA = cell2struct([struct2cell(res_bb); struct2cell(res_damp)], names, 1);
 
 % Modal frequency vs. amplitude
 figure;
-semilogx(abs(Y_HB_1),om_HB/om_lin(imod),'g-', 'LineWidth', 2);
+semilogx(abs(Y_HB_1)*PHI_L_2,om_HB/om_lin(imod),'g-', 'LineWidth', 2);
 hold on
 semilogx(abs(res_NMA.Psi_tilde_i(opt.NMA.eval_DOF,:)),res_NMA.om_i/(res_LMA.freq(1)*2*pi),'k.','MarkerSize',10)
 xlabel('amplitude in m'); ylabel('$\omega/\omega_0$')
@@ -305,8 +304,8 @@ legend('NMA with NLvib','simulated experiment')
 
 % Modal damping ratio vs. amplitude
 figure; 
-semilogx(abs(Y_HB_1),del_HB*1e2,'g-', 'LineWidth', 2);
+semilogx(abs(Y_HB_1)*PHI_L_2,del_HB*1e2/PHI_L_2,'g-', 'LineWidth', 2);
 hold on
-semilogx(abs(res_NMA.Psi_tilde_i(opt.NMA.eval_DOF,:)),abs(res_NMA.del_i_nl)*100,'k.','MarkerSize',10)
+semilogx(abs(res_NMA.Psi_tilde_i(opt.NMA.eval_DOF,:)),abs(res_NMA.del_i_nl)*1e2*PHI_L_2,'k.','MarkerSize',10)
 xlabel('amplitude in m'); ylabel('modal damping ratio in %')
 legend('NMA with NLvib','simulated experiment')
