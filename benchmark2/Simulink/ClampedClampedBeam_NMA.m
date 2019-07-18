@@ -142,7 +142,7 @@ a_NMA = 10.^log10a_NMA;
 Q_HB = Psi_HB.*repmat(a_NMA,size(Psi_HB,1),1);
 % fundamental harmonic motion
 Y_HB_1 = Q_HB(n+(1:n),:)-1i*Q_HB(2*n+(1:n),:);
-Y_HB_1 = 
+Y_HB_1 = Y_HB_1'*PHI_L_2';
 
 % Define amplitude as magnitude of the fundamental harmonic of the
 % first coordinate's displacement
@@ -157,9 +157,7 @@ a_w_L_2_NMA = sqrt([1 0.5*ones(1,2*H)]*w_L_2_NMA_sum.^2); % compute amplitude
 
 %% Setup simulated experiments
 
-Shaker = 'yes'; % 'yes', 'no'
-exc_node = 1; % node for external excitation
- % Simulation time in seconds
+Shaker = 'no'; % 'yes', 'no'
 phase_lag = 90; % phase lag in degree
 
 x0beam = 0; % intial condition beam integrator
@@ -238,7 +236,7 @@ switch Shaker
         for i = 1:12
             simin.time(i+1) = simin.time(i)+time_interval(i);
         end
-        simtime = simin.time(end);
+        simtime = simin.time(end);  % Simulation time in seconds
         simin.signals.values = 0.005*[0 3 3 10 10 25 25 60 60 100 100 160 160]';
         simin.signals.dimensions = 1;
         
@@ -308,7 +306,7 @@ res_NMA = cell2struct([struct2cell(res_bb); struct2cell(res_damp)], names, 1);
 
 % Modal frequency vs. amplitude
 figure;
-semilogx(abs(Y_HB_1)*PHI_L_2,om_HB/om_lin(imod),'g-', 'LineWidth', 2);
+semilogx(abs(Y_HB_1),om_HB/om_lin(imod),'g-', 'LineWidth', 2);
 hold on
 semilogx(abs(res_NMA.Psi_tilde_i(opt.NMA.eval_DOF,:)),res_NMA.om_i/(res_LMA.freq(1)*2*pi),'k.','MarkerSize',10)
 xlabel('amplitude in m'); ylabel('$\omega/\omega_0$')
@@ -316,8 +314,8 @@ legend('NMA with NLvib','simulated experiment')
 
 % Modal damping ratio vs. amplitude
 figure; 
-semilogx(abs(Y_HB_1)*PHI_L_2,del_HB*1e2/PHI_L_2,'g-', 'LineWidth', 2);
+semilogx(abs(Y_HB_1),del_HB*1e2,'g-', 'LineWidth', 2);
 hold on
-semilogx(abs(res_NMA.Psi_tilde_i(opt.NMA.eval_DOF,:)),abs(res_NMA.del_i_nl)*1e2*PHI_L_2,'k.','MarkerSize',10)
+semilogx(abs(res_NMA.Psi_tilde_i(opt.NMA.eval_DOF,:)),abs(res_NMA.del_i_nl)*1e2,'k.','MarkerSize',10)
 xlabel('amplitude in m'); ylabel('modal damping ratio in %')
 legend('NMA with NLvib','simulated experiment')
