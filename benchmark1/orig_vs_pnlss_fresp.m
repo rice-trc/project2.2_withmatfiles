@@ -4,6 +4,7 @@ addpath('../src/mhbm_res/')
 addpath('../src/matlab/')
 addpath('../src/nlvib/SRC/')
 addpath('../src/nlvib/SRC/MechanicalSystems/')
+addpath('../src/nlvib_hillsexp/')
 
 %% Define system
 
@@ -26,7 +27,7 @@ D = diag(2*Dmod(1:Nmod).*om(1:Nmod));
 K = diag(om.^2);
 
 % Fundamental harmonic of external forcing
-Fex1 = gam;
+Fex1 = PHI_L2;
 
 % Define oscillator as system with polynomial stiffness nonlinearities
 oscillator = System_with_PolynomialStiffnessNonlinearity(M,D,K,p,E,Fex1);
@@ -45,9 +46,12 @@ Om_s = 200*2*pi;      % start frequency
 Om_e = 700*2*pi;     % end frequency
 
 % Excitation levels
-exc_lev = [10 40 60 80 100];
+% exc_lev = [10 40 60 80 100];
+exc_lev = [0.1 2.5 7.5 10 15];
+exc_lev = [1e-2 3e-2 5e-2 8e-2 1e-1];
 X = cell(size(exc_lev));
 Sols = cell(size(exc_lev));
+HillsExps = cell(size(exc_lev));
 for iex=1:length(exc_lev)
     % Set excitation level
     oscillator.Fex1 = Fex1*exc_lev(iex);
@@ -64,18 +68,25 @@ for iex=1:length(exc_lev)
     TYPICAL_x = oscillator.Fex1/(2*D*M*om^2);
     Dscale = [TYPICAL_x*ones(length(y0),1);(Om_s+Om_e)/2];
     Sopt = struct('Dscale',Dscale,'dynamicDscale',1,'jac','full','stepmax',1e4);
-    X{iex} = solve_and_continue(y0,...
+    [X{iex},~,HillsExps{iex}] = solve_and_continue(y0, ...
         @(X) HB_residual(X,oscillator,H,N,analysis),...
-        Om_s,Om_e,ds,Sopt);
+        Om_s,Om_e,ds,Sopt, @(Y) HB_hillsexp_nlvib(Y, @(X) HB_residual(X,oscillator,H,N,analysis), oscillator.M, oscillator.D, H, Nmod));
 	Sols{iex} = [X{iex}(end,:)' PHI_L2*sqrt([1 0.5*ones(1,2*H)]*X{iex}(1:end-1,:).^2)'...
-        atan2d(-X{iex}(3,:),X{iex}(2,:))'];
+        atan2d(-X{iex}(3,:),X{iex}(2,:))' [HillsExps{iex}.stab]' [HillsExps{iex}.unstab]'];
 end
 
 %% Compute frequency response of PNLSS identified model
-Alevel = 1000;
+N = 1e3;
+exc_lev = [1e-2 3e-2 5e-2 8e-2 1e-1];
+% Alevels = 0.5*N*exc_lev.^2;
+Alevels = [0.01 0.05 0.10 0.15 0.20 0.25];
+nx = [2 3];
+
+for ia = 1:length(Alevels)
+Alevel = Alevels(ia);
 fs = 4096;
-load(sprintf('./data/ode45_multisine_A%d_F%d.mat',Alevel,fs), 'PHI_L2');
-load(sprintf('./data/pnlssmodel_A%d_F%d.mat',Alevel,fs),'model');
+load(sprintf('./data/ode45_multisine_A%.2f_F%d.mat',Alevel,fs), 'PHI_L2');
+load(sprintf('./data/pnlssmodel_A%.2f_F%d_nx%s.mat',Alevel,fs,sprintf('%d',nx)),'model');
 % load(sprintf('./data/pnlssout_A%d_F%d.mat',Alevel,fs),'model');
 
 Ndpnlss = size(model.A,1);
@@ -98,7 +109,8 @@ for iex=1:length(exc_lev)
     X0 = [zeros(length(model.A),1);real(Xc);-imag(Xc);....
             zeros(2*(H-1)*length(model.A),1)];                  % initial guess
     
-	TYPICAL_x = 1e1*Ff/(2*D*M*om^2);
+% 	TYPICAL_x = 1e5*Ff/(2*D*M*om^2);
+    TYPICAL_x = 1e-4;
     Dscale = [TYPICAL_x*ones(length(X0),1);Om_s];
     Sopt = struct('ds',ds,'dsmin',dsmin,'dsmax',dsmax,'flag',1,'stepadapt',1, ...
             'predictor','tangent','parametrization','arc_length', ...
@@ -108,45 +120,51 @@ for iex=1:length(exc_lev)
             @(XX) mhbm_aft_residual_pnlss_discrete(XX, model.A, model.B, model.E, model.xpowers, 1/fs, Uc*Ff, H, Ntd);
     Cfun_postprocess = {@(varargin) ...
             mhbm_post_amplitude_pnlss(varargin{:},Uc*Ff,model.C,model.D,zeros(1,length(model.E)),model.xpowers,H,Ntd)};
-    fun_postprocess = @(Y) mhbm_postprocess(Y,fun_residual,Cfun_postprocess);
+    fun_postprocess = @(Y) mhbm_postprocess(Y,fun_residual,Cfun_postprocess,H,model.n,fs);
 
     [Xpnlss{iex},~,Sol] = solve_and_continue(X0, fun_residual,...
         Om_s, Om_e, ds, Sopt, fun_postprocess);
-    Solspnlss{iex} = [Xpnlss{iex}(end,:)' [Sol.Apv]' [Sol.Aph1]'];
+    Solspnlss{iex} = [Xpnlss{iex}(end,:)' [Sol.Apv]' [Sol.Aph1]' [Sol.stab]' [Sol.unstab]'];
 end
 
-
-% %% Plot
-figure(Alevel)
+%% Plot
+figure(10*ia)
 clf()
 
-figure(Alevel+1)
+figure(10*ia+1)
 clf()
 colos = distinguishable_colors(length(exc_lev));
 aa = gobjects(size(exc_lev));
 for iex=1:length(exc_lev)
-    figure(Alevel)
-    plot(Sols{iex}(:,1)/2/pi, Sols{iex}(:,2), '-', 'Color', colos(iex,:)); hold on
-    plot(Solspnlss{iex}(:,1)/2/pi, PHI_L2*Solspnlss{iex}(:,2), '.--', 'Color', colos(iex,:))
+    figure(10*ia)
+    plot(Sols{iex}(:,1)/2/pi, Sols{iex}(:,2).*Sols{iex}(:,4), '-', 'Color', colos(iex,:)); hold on
+    plot(Sols{iex}(:,1)/2/pi, Sols{iex}(:,2).*Sols{iex}(:,5), '--', 'Color', colos(iex,:)); hold on
+    plot(Solspnlss{iex}(:,1)/2/pi, Solspnlss{iex}(:,2).*Solspnlss{iex}(:,4), '.-', 'Color', colos(iex,:)); hold on
+    plot(Solspnlss{iex}(:,1)/2/pi, Solspnlss{iex}(:,2).*Solspnlss{iex}(:,5), '+-', 'Color', colos(iex,:)); hold on
     
-    figure(Alevel+1)
-    aa(iex) = plot(Sols{iex}(:,1)/2/pi, Sols{iex}(:,3), '-', 'Color', colos(iex,:)); hold on
-    plot(Solspnlss{iex}(:,1)/2/pi, Solspnlss{iex}(:,3), '.--', 'Color', colos(iex,:))
+    figure(10*ia+1)
+    aa(iex) = plot(Sols{iex}(:,1)/2/pi, Sols{iex}(:,3).*Sols{iex}(:,4), '-', 'Color', colos(iex,:)); hold on
+    plot(Sols{iex}(:,1)/2/pi, Sols{iex}(:,3).*Sols{iex}(:,5), '--', 'Color', colos(iex,:)); hold on
+    plot(Solspnlss{iex}(:,1)/2/pi, Solspnlss{iex}(:,3).*Solspnlss{iex}(:,4), '.-', 'Color', colos(iex,:)); hold on
+    plot(Solspnlss{iex}(:,1)/2/pi, Solspnlss{iex}(:,3).*Solspnlss{iex}(:,5), '+-', 'Color', colos(iex,:)); hold on
     legend(aa(iex), sprintf('F = %.2f', exc_lev(iex)));
 end
 
-figure(Alevel)
+figure(10*ia)
 % set(gca, 'YScale', 'log')
 xlim(sort([Om_s Om_e])/2/pi)
+xlim([200 350])
 xlabel('Forcing frequency \omega (Hz)')
 ylabel('RMS response amplitude (m)')
-% savefig(sprintf('./fig/pnlssfrf_A%d_Amp.fig',Alevel))
-% print(sprintf('./fig/pnlssfrf_A%d_Amp.eps',Alevel), '-depsc')
+% savefig(sprintf('./fig/pnlssfrf_A%d_Amp.fig',Alevels(ia)))
+print(sprintf('./fig/pnlssfrf_A%.2f_Amp_nx%s.eps',Alevels(ia),sprintf('%d',nx)), '-depsc')
 
-figure(Alevel+1)
+figure(10*ia+1)
 xlim(sort([Om_s Om_e])/2/pi)
+xlim([200 350])
 xlabel('Forcing frequency \omega (Hz)')
 ylabel('Response phase (degs)')
 legend(aa(1:end), 'Location', 'northeast')
-% savefig(sprintf('./fig/pnlssfrf_A%d_Phase.fig',Alevel))
-% print(sprintf('./fig/pnlssfrf_A%d_Phase.eps',Alevel), '-depsc')
+% savefig(sprintf('./fig/pnlssfrf_A%d_Phase.fig',Alevels(ia)))
+print(sprintf('./fig/pnlssfrf_A%.2f_Phase_nx%s.eps',Alevels(ia),sprintf('%d',nx)), '-depsc')
+end

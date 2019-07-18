@@ -2,7 +2,8 @@ clc
 clear all
 
 %% Histograms
-Alevels=[10 50 100 1000 10000 100000];
+% Alevels=[10 50 100 1000 10000 100000];
+Alevels = [0.01 0.05 0.10 0.15 0.20 0.25];
 fs = 4096;
 sp = [3 2];
 
@@ -20,21 +21,21 @@ fprintf('----------------------\n');
 fprintf('Alevel     CF  SD/Peak\n');
 fprintf('----------------------\n');
 for ia=1:length(Alevels)
-    load(sprintf('./data/ode45_multisine_A%d_F%d.mat',Alevels(ia),fs), 'u', 'y');
+    load(sprintf('./data/ode45_multisine_A%.2f_F%d.mat',Alevels(ia),fs), 'u', 'y');
     
     figure(1)
     subplot(sp(1), sp(2), ia)
     histogram(u(:,1,1), 'Normalization', 'pdf');
     xlabel('Force amplitude (N)')
     ylabel('pdf')
-    title(sprintf('A = %d N', Alevels(ia)))    
+    title(sprintf('A = %.2f N', Alevels(ia)))    
 
     figure(2)
     subplot(sp(1), sp(2), ia)
     histogram(y(:,1,1), 'Normalization', 'pdf'); 
     xlabel('Displacement')
     ylabel('pdf')
-    title(sprintf('A = %d N', Alevels(ia)))
+    title(sprintf('A = %.2f N', Alevels(ia)))
 
     CFs(ia) = max(u(:,1,1))/rms(u(:,1,1));
     SPs(ia) = sqrt(var(u(:,1,1)))/max(u(:,1,1));
@@ -53,11 +54,11 @@ print('./fig/Response_Hists.eps', '-depsc')
 
 figure(3)
 clf()
-Alevels=[10 50 100 1000 10000 100000];
+Alevels = [0.01 0.05 0.10 0.15 0.20 0.25];
 fs = 4096;
 sp = [3 2];
 for i=1:length(Alevels)
-    load(sprintf('./data/ode45_multisine_A%d_F%d.mat',Alevels(i),fs), 'y', 'ydot');
+    load(sprintf('./data/ode45_multisine_A%.2f_F%d.mat',Alevels(i),fs), 'y', 'ydot');
     
     subplot(sp(1), sp(2), i)
 %     plot(y(:,1,1), ydot(:,1,1), '.', 'MarkerSize', 0.1)
@@ -66,6 +67,6 @@ for i=1:length(Alevels)
     ylabel(yy, 'pde')
     xlabel('y')
     ylabel('dy/dt')
-    title(sprintf('A = %d N', Alevels(i)))
+    title(sprintf('A = %.2f N', Alevels(i)))
 end
 print('./fig/MS_stateplanekde.eps', '-depsc')

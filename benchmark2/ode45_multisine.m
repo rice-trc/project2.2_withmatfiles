@@ -34,7 +34,7 @@ fname = ['beam_New_Design_Steel_analytical_5t_' ...
 [p, E] = nlcoeff(fname, Nmod);
 
 % Fundamental harmonic of external forcing
-Fex1 = gam;
+Fex1 = PHI_L2;
 
 nz = size(p,1);
 n = Nmod;

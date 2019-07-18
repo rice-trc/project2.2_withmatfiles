@@ -10,11 +10,14 @@ figpath = './fig';
 addnoise = false;
 savefig  = true;
 
-Alevels = [10 25 35 50 100 500 1000 10000 100000];
+Alevels = [0.01 0.05 0.10 0.15 0.20 0.25];
+
+PerOrNot = [true true true true true true true true true true true];  % true if periodic; false if not
 fs = 4096;
+% fs = 16384;
 
 %% BLA with lowest forcing
-load(sprintf('./data/ode45_multisine_A%d_F%d.mat',Alevels(1), fs))
+load(sprintf('./data/ode45_multisine_A%.2f_F%d.mat',Alevels(1), fs))
 
 freq = (0:Nt-1)*f0;
 [Nt, P, R, n] = size(y);
@@ -56,7 +59,8 @@ u = permute(u, [1,4,3,2]); % N x m x R x P
 y = permute(y, [1,4,3,2]); % N x p x R x P
 covY = fCovarY(y);  % Noise covariance (frequency domain)
 
-lines = (f1/f0+1):(f2/f0+1);
+lines = MS{1}.lines;
+lines(lines==1) = [];
 U = fft(u);  U = U(lines, :, :, :);  % Input Spectrum at excited lines
 Y = fft(y);  Y = Y(lines, :, :, :);  % Output Spectrum at excited lines
 
@@ -69,6 +73,7 @@ maxr = 20;
 % Excited frequencies (normed)
 freqs_norm = (lines-1)/Nt;
 
+% covGML
 models = fLoopSubSpace(freqs_norm, G, covGML, na, maxr, 100);
 
 % Extract linear state-space matrices from best model on validation data
@@ -104,7 +109,7 @@ T2 = 0;
 m = size(u,2);
 p = size(y,2);
 
-nx = [3];
+nx = [2 3];
 ny = [];
 whichtermsx = 'statesonly';
 whichtermsy = 'empty';
@@ -128,43 +133,72 @@ modellintest = model; modellintest.T1 = 0;
 % Weighting
 W = [];  
 
-%% Sequential PNLSS
+ %% Sequential PNLSS
 errormeasures = cell(size(Alevels));
 seqmodels = cell(size(Alevels));
 modelguess = modellinest;
 for ia=1:length(Alevels)
-    load(sprintf('./data/ode45_multisine_A%d_F%d.mat',Alevels(ia), fs), 'u', 'y');
-    
+    load(sprintf('./data/ode45_multisine_A%.2f_F%d.mat',Alevels(ia), fs), 'u', 'y');
+
     [Nt, P, R, n] = size(y);
-    Ptr = 6;
-    P = P-Ptr;
+	freq = (0:Nt-1)*f0;
+    % Use middle deflection
+    y = PHI_L2*reshape(y, [], n)';
+    y = reshape(y, [Nt, P, R]);
     
     % Separate data
     utest = u(:, end, end);  utest = utest(:);
-    ytest = y(:, end, end);  ytest = ytest(:);
+    ytest = y(:, end, end);  ytest = ytest(:);                
 
     uval = u(:, end, end-1);  uval = uval(:);
     yval = y(:, end, end-1);  yval = yval(:);
-    % kick off transient
-    R = R-2;
-    u = u(:, Ptr:end, 1:R);
-    y = y(:, Ptr:end, 1:R);
-    modelguess.T1 = [Ntrans 1+(0:Nt:(R-1)*Nt)];
-    
-    u = permute(u, [1,4,3,2]);  % N x m x R x P
-    y = permute(y, [1,4,3,2]);  % N x p x R x P
-    covY = fCovarY(y);  % Noise covariance (Frequency domain)
-    
-    if Alevels(ia)<=35
+        
+    if PerOrNot(ia)   % if periodic
+        % kick off transient
+        Ptr = 6;
+        P = P-Ptr;
+        R = R-2;
+        u = u(:, Ptr:end, 1:R);
+        y = y(:, Ptr:end, 1:R);
+
+        u = permute(u, [1,4,3,2]);  % N x m x R x P
+        y = permute(y, [1,4,3,2]);  % N x p x R x P
+        covY = fCovarY(y);  % Noise covariance (Frequency domain)
+
         u = mean(u, 4);
         y = mean(y, 4);
-    else
-        R = 1;
-        u = u(:, :, 1, 1);
-        y = y(:, :, 1, 1);
-
+        
         modelguess.T1 = [Ntrans 1+(0:Nt:(R-1)*Nt)];
+    else  % if not periodic
+        % No concept of transients
+        Ptr = P-1;
+        P = P-Ptr;
+        R = R-2;
+        u = u(:, Ptr+1:end, 1:R);
+        y = y(:, Ptr+1:end, 1:R);
+
+        % Stack all the periods together since 
+%         uc = u(:);
+%         yc = y(:);
+        u = reshape(u, [Nt*P, 1, R]);
+        y = reshape(y, [Nt*P, 1, R]);
+        
+        u = permute(u, [1,4,3,2]);  % N x m x R x P
+        y = permute(y, [1,4,3,2]);  % N x p x R x P
+        covY = fCovarY(y);  % Noise covariance (Frequency domain)
+        
+%         % Non-periodic input
+%         modelguess.T1 = [0];
+%         modelguess.T2 = Nt*(Ptr-1);
+
+        Nt = size(u,1);
+        
+        % Periodic input
+        modelguess.T1 = [Ptr*Ntrans 1+(0:Nt:(R-1)*Nt)];
+%         modelguess.T1 = [0];
+        modelguess.T2 = [];
     end
+    
     m = size(u, 2);
     p = size(y, 2);
     uc = u(:);
@@ -184,14 +218,31 @@ for ia=1:length(Alevels)
     err_nlinit = yc-y_nlinit;
 
     % PNLSS optimization
-    [~, y_mod, models_pnlss] = fLMnlssWeighted(uc, yc, modelguess, MaxCount, W, lambda);
+    try
+        if PerOrNot(ia)
+            [~, y_mod, models_pnlss] = fLMnlssWeighted(uc, yc, modelguess, MaxCount, W, lambda);
+        else
+            modelguess.x0active = (1:modelguess.n)';
+            modelguess.u0active = (1:modelguess.m)';
+            [~, y_mod, models_pnlss] = fLMnlssWeighted_x0u0(uc, yc, modelguess, MaxCount, W, lambda);
+%         [~, y_mod, models_pnlss] = fLMnlssWeighted(uc, yc, modelguess, MaxCount, W, lambda);
+        end
+    catch 
+        modelguess.E = modelguess.E*0;
+        [~, y_mod, models_pnlss] = fLMnlssWeighted(uc, yc, modelguess, MaxCount, W, lambda);
+    end
 %  	[~, y_mod, models_pnlss] = fLMnlssWeighted(uc, yc, models_pnlss(end-5), MaxCount, W, lambda);
     err_nlest = yc-y_mod;
     
     % Choose best model from PNLSS (using validation data)
     valerrs = [];
     for i=1:length(models_pnlss)
-        models_pnlss(i).T1 = Ntrans;
+        if PerOrNot(ia)
+            models_pnlss(i).T1 = Ntrans;
+        else
+            models_pnlss(i).T1 = 0;
+            models_pnlss(i).T2 = Nt*(Ptr-1);
+        end
         yval_mod = fFilterNLSS(models_pnlss(i), uval);
         valerr = yval - yval_mod;
         valerrs = [valerrs; rms(valerr)];
@@ -223,9 +274,27 @@ for ia=1:length(Alevels)
     errormeasures{ia} = err;
     seqmodels{ia} = model;
     
-    save(sprintf('./data/pnlssmodel_A%d_F%d.mat', Alevels(ia), fs), 'model', 'err')
+    save(sprintf('./data/pnlssmodel_A%.2f_F%d_nx%s.mat', Alevels(ia), fs, sprintf('%d',nx)), 'model', 'err')
     
     fprintf('Done %d/%d\n', ia, length(Alevels))
+    
+    % Plot
+
+    % Estimation data
+    figure(ia);
+    clf()
+	plottime = [yc err_linest err_nlest];
+    t = ((1:size(plottime,1))-1)*t(2);
+    plot(t(1:Nt*R),plottime)
+    xlabel('Time (s)')
+    ylabel('Output (errors)')
+    legend('output','linear error','PNLSS error')
+    title('Estimation results')
+    print(sprintf('./fig/TDOMESTRESS_PNLSS_A%.2f_F%d_nx%s.eps', Alevels(ia), fs, sprintf('%d',nx)), '-depsc')
+    disp(' ')
+    disp(['rms(y-y_mod) = ' num2str(rms(yc-y_mod))...
+        ' (= Output error of the best PNLSS model on the estimation data)'])
+    % disp(['rms(noise(:))/sqrt(P) = ' num2str(rms(noise(:))/sqrt(P)) ' (= Noise level)'])
 end
 
 save('./data/seqpnlssmodels.mat', 'Alevels', 'errormeasures', 'seqmodels');

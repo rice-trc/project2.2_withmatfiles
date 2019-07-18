@@ -20,13 +20,13 @@ figpath = './fig/';
 addnoise = false;
 savefig = true;
 
-Alevel = 25;
-fs = 16384;
+Alevel = 10;
+% fs = 16384;
+fs = 4096;
 load(sprintf('data/ode45_multisine_A%d_F%d.mat',Alevel,fs))
 
 % load('ode45A21.mat')
-freq = (0:Nt-1)*f0;   % frequency content
-[Nt,P,R,n] = size(y);
+figure[Nt,P,R,n] = size(y);
 
 % use middle deflection
 y = PHI_L2*reshape(y,[],n)';
