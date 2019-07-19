@@ -81,7 +81,7 @@ D = cc./(2*om_fixed); % modal damping ratios
 %% Nonlinear modal analysis using harmonic balance
 analysis = 'NMA';
 
-imod = 2;           % mode to be analyzed
+imod = 3;           % mode to be analyzed
 Ntd = 2^10;         % number of time samples per period
 inorm = 2;          % coordinate for phase normalization
 
@@ -130,7 +130,7 @@ Y_HB_1 = Q_HB(n+(1:n),:)-1i*Q_HB(2*n+(1:n),:);
 
 %% Setup simulated experiments
 
-Shaker = 'yes'; % 'yes', 'no'
+Shaker = 'no'; % 'yes', 'no'
 
 exc_node = 8; % node for external excitation
 simtime = 30;   % Simulation time in seconds
@@ -208,8 +208,14 @@ switch Shaker
             simin.time(i+1) = simin.time(i)+time_interval(i);
         end
         simtime = simin.time(end);
-        simin.signals.values = [0 0.2 0.2 0.5 0.5 0.75 0.75 1 1 2 2 3.5 3.5]';
-%         simin.signals.values = 10*[0 0.2 0.2 0.5 0.5 0.75 0.75 1 1 2 2 3.5 3.5]'; % imod = 3
+        switch imod
+            case 1
+                simin.signals.values = [0 0.2 0.2 0.5 0.5 0.75 0.75 1 1 2 2 3.5 3.5]';
+            case 2
+                simin.signals.values = [0 0.2 0.2 0.5 0.5 0.75 0.75 1 1 2 2 3.5 3.5]';
+            case 3
+                simin.signals.values = 10*[0 0.2 0.2 0.5 0.5 0.75 0.75 1 1 2 2 3.5 3.5]'; 
+        end
         simin.signals.dimensions = 1;
         
         P = 5; % proportional gain
@@ -228,9 +234,14 @@ switch Shaker
             simin.time(i+1) = simin.time(i)+time_interval(i);
         end
         simtime = simin.time(end);
-        simin.signals.values = [0 0.05 0.05 0.1 0.1 0.25 0.25 0.3 0.3 0.4 0.4 0.6 0.6]';  %imod = 1
-        simin.signals.values = [0 0.01 0.01 0.1 0.1 0.25 0.25 0.4 0.4 0.8 0.8 1.2 1.2]'; % imod = 2
-%         simin.signals.values = 5*[0 0.05 0.05 0.1 0.1 0.25 0.25 0.3 0.3 0.4 0.4 0.6 0.6]';
+        switch imod
+            case 1
+                simin.signals.values = [0 0.05 0.05 0.1 0.1 0.25 0.25 0.3 0.3 0.4 0.4 0.6 0.6]';
+            case 2
+                simin.signals.values = [0 0.01 0.01 0.1 0.1 0.25 0.25 0.4 0.4 0.8 0.8 1.2 1.2]';
+            case 3
+                simin.signals.values = 5*[0 0.05 0.05 0.1 0.1 0.25 0.25 0.3 0.3 0.4 0.4 0.6 0.6]';
+        end
         simin.signals.dimensions = 1;
         
         P = 5; % proportional gain
@@ -254,9 +265,9 @@ simulation.Signalbuilder = simin.time;
 %% Analysis of simualted measurements
 
 opt.NMA.exc_DOF = exc_node; % index of drive point
-opt.NMA.Fs = 5000; % sample frequency in Hz
+opt.NMA.Fs = 30000; % sample frequency in Hz
 opt.NMA.var_step = 1; % 0 for constant step size, 1 for variable step size
-opt.NMA.periods = 50; % number of analyzed periods
+opt.NMA.periods = 350; % number of analyzed periods
 
 opt.NMA.n_harm = 10; % number of harmonics considered
 opt.NMA.min_harm_level = 0.015; % minimal level relative to highest peak

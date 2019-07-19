@@ -164,7 +164,7 @@ x0beam = 0; % intial condition beam integrator
 x0vco = 0; % initial condition VCO integrator
 
 % PLL controller
-omega_0 = om_lin; % center frequency
+omega_0 = om_lin(imod); % center frequency
 a = 0.02*2*pi; % low pass filter
 
 % state-space model
@@ -173,7 +173,7 @@ A = [zeros(n,n), eye(n);
 
 % localize nonlinearity
 loc_nl = 1;
-loc_exc = 1;
+loc_exc = Fex1;
 
 % input matrices
 B = [zeros(n,1);oscillator.M\loc_exc];
@@ -182,13 +182,12 @@ NL_coeff = oscillator.nonlinear_elements{1}.coefficients;
 B_nl = [zeros(n,1);oscillator.M\loc_nl]*NL_coeff;
 
 % localization matrices
-T_nl = zeros(1,2*n);
-T_nl(1) = 1;
+T_nl = PHI_L_2*[eye(n,n) zeros(n,n)];
 
 T_exc = zeros(1,2*n);
 T_exc(1) = PHI_L_2;
 
-T_disp = [eye(n,n) zeros(n,n)]*PHI_L_2;
+T_disp = PHI_L_2*[eye(n,n) zeros(n,n)];
 
 %% shaker model
 
